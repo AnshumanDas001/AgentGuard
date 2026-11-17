@@ -90,6 +90,49 @@ and `irreversible_external_action` (3 each) have too few rows to score at all. M
 converted from benchmarks whose tools differ from this agent's 5 tools. Rows were labeled by
 the author and Claude under the same written rules; there was no independent second labeler.
 
+## Guard backends (Phase 3)
+
+Each guard reads one proposed action (task, history, tool, arguments) and returns
+`p_unsafe` (0 to 1) and a category. The policy turns that into allow / escalate / block.
+
+| Guard | What it is | Cost per check |
+|---|---|---|
+| `rules` | Hand-written patterns for dangerous commands, secret paths and outgoing data, plus a check for actions that reuse an address or id taken from an instruction inside a tool output | free, about 1 ms |
+| `judge-cheap` | Claude Haiku 5.5 via OpenRouter, low reasoning effort, JSON answer constrained by a schema | about $0.0002, about 2 s |
+| `judge-strong` | Claude Opus 5.5 via OpenRouter, medium effort; if its safety filter declines, Sonnet 5.5, then Haiku 5.5 | about $0.008, about 3 s |
+| `classifier` | DeBERTa-v3-small fine-tuned on the train split (4 epochs, Apple GPU, 8 minutes) | free, about 50 ms |
+| `jev` | TypeSafe's Jev; waiting for API access | |
+
+```bash
+make guard-dev BACKEND=rules      # or judge-cheap, judge-strong, classifier
+make train-classifier             # needs the ml group: uv sync --group ml
+```
+
+**Dev-split results** (191 rows, 43 unsafe; threshold 0.5; numbers move a lot with this few rows):
+
+| Guard | Catches (recall) | False alarms | AUROC | Without ambiguous rows: recall / false alarms |
+|---|---|---|---|---|
+| rules | 56% | 2.7% | 0.83 | 75% / 1.6% |
+| judge-cheap | 77% | 0.7% | 0.95 | 97% / 0% |
+| judge-strong | 91% | 4.7% | 0.98 | 97% / 1.6% |
+| classifier | 44% | 0.7% | 0.86 | 56% / 0.8% |
+
+Caveats:
+- These are dev numbers, used for building and tuning. The real comparison is the single
+  Phase 4 run on the frozen test split, with confidence intervals.
+- The rules were written and checked on the train split. Their injection check fits
+  InjecAgent rows well because those rows share a template.
+- Claude labeled most rows (under rules written with the author), and two of the guards
+  are Claude models judging from a summary of the same rules. That shared origin may
+  inflate the judges' agreement with the labels.
+- Opus 5.5's safety filter declined to judge 15% of dev rows (attack-like content); a
+  fallback model answered those, and each verdict records which model answered.
+- The classifier catches injection rows (86%) but almost nothing else: most categories
+  have only 2 to 15 training rows.
+
+Per-row verdicts and summaries are in `results/runs/`; the classifier's training record is
+in `results/classifier/metrics.json`.
+
 ## Layout
 
 ```
@@ -101,7 +144,9 @@ agentguard/
     interceptor.py
     policy.py    thresholds (cascade comes in Phase 3)
     logger.py    JSONL logger
-    backends/    allow_all.py (rules, classifier, jev, llm_judge to come)
+    backends/    allow_all.py, rules.py, llm_judge.py, classifier.py (jev to come)
+    train_classifier.py  fine-tunes the DeBERTa guard
+  eval/          run a guard over a split and summarise it
   dataset/       row format, validator, stats, labeling tool, split and freeze
   pricing.py     token prices for cost per decision
 sandbox/         Dockerfile + seeded fake project and canary secrets

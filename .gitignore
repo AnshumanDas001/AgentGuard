@@ -18,3 +18,6 @@ data/external/
 
 # Personal planning docs
 *.pdf
+
+# Trained model weights (hundreds of MB); results/classifier/metrics.json records each run
+models/
