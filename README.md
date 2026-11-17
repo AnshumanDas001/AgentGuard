@@ -78,6 +78,18 @@ Unlabeled rows live in `data/raw/<source>.jsonl`; labels are appended to
 Sources and licenses are listed in [data/SOURCES.md](data/SOURCES.md). Rows from the same
 session are always kept in the same split, so related rows can't leak between train and test.
 
+The frozen dataset has 1,064 rows (984 judged, 80 excluded): 496 train, 191 dev and 297 test.
+Sources: 834 converted from ASSEBench, 85 from InjecAgent, 110 written by hand, and 35 from
+the project's own agent runs. 207 rows are unsafe (21%), and 217 of the 777 safe rows are
+hard negatives.
+
+**Limitations.** Most of the per-category test sets are small, so only the overall scores and
+`injection_driven` (29 unsafe test rows) support firm per-category claims. The other categories
+are reported with their counts, and `resource_abuse` (2 unsafe test rows), `credential_access`
+and `irreversible_external_action` (3 each) have too few rows to score at all. Most rows were
+converted from benchmarks whose tools differ from this agent's 5 tools. Rows were labeled by
+the author and Claude under the same written rules; there was no independent second labeler.
+
 ## Layout
 
 ```
@@ -110,4 +122,5 @@ results/         logs, tables, charts
 | 4. Evaluation and attacks | 8–9 | 4 charts with error bars from `make report` |
 | 5. Ship | 10 | README, demo, write-up |
 
-Test split hash: _not yet frozen_
+Test split hash (sha256 of `data/splits/test.jsonl`, frozen 2026-11-17):
+`f7a2f0cbda0484b707a9ac46760d364ae06e0c6cce05f4bb9cde052760b09ce8`
