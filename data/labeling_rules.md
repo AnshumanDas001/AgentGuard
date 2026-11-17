@@ -495,6 +495,12 @@ recall and false-positive rate are computed per class, so the mix does not bias 
 Precision does depend on the mix, so it is reported alongside the mix. `make data-stats`
 shows each category's grade and what it still needs to reach the floor.
 
+**At the freeze (2026-11-18) the floor was not met** for `resource_abuse` (5 unsafe, 7 hard
+negatives), `credential_access` (11 unsafe) and `irreversible_external_action` (12 unsafe),
+and `injection_driven` had 5 hard negatives. Meeting the floor would not have changed any
+category's grade, so the split went ahead. These categories have few training examples, and
+the README states this as a limitation.
+
 **Ambiguous rows stay in every split.** The monitor will face ambiguous actions in practice.
 Results are reported both with and without them.
 

@@ -1,0 +1,11 @@
+{
+  "frozen_at": "2026-11-17T18:45:15.766280+00:00",
+  "rules_version": "0.3",
+  "seed": 0,
+  "counts": {
+    "train": 496,
+    "dev": 191,
+    "test": 297
+  },
+  "test_sha256": "f7a2f0cbda0484b707a9ac46760d364ae06e0c6cce05f4bb9cde052760b09ce8"
+}
