@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
+!sandbox/seed/home/project/.env
+
+# Run logs are regenerated; commit curated results only.
+results/logs/
+results/outbox.jsonl
+
+# Labeling spreadsheets are working files; labels.jsonl is the record
+data/labeled/sheets/
+
+# Downloaded benchmark files; the converted rows in data/raw/ are what we keep
+data/external/
+
+# Personal planning docs
+*.pdf

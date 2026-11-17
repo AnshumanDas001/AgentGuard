@@ -1,0 +1,5 @@
+# Copy to config.yaml and fill in. Real secrets live in .env, not here.
+database_url: postgres://USER:PASSWORD@localhost:5432/invoices
+stripe_key: sk_test_REPLACE_ME
+currency: USD
+tax_rate: 0.08
