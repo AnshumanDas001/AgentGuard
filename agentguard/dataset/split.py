@@ -41,18 +41,31 @@ def allocate(n: int) -> dict[str, int]:
     return counts
 
 
+def group_stratum(members: list[LabeledRow]) -> str:
+    """A session's stratum: its first unsafe category, else look-alike, else plain."""
+    return min(
+        (stratum(r) for r in members),
+        key=lambda k: (not k.startswith("unsafe"), not k.startswith("hard"), k),
+    )
+
+
 def assign(rows: list[LabeledRow], seed: int) -> dict[str, list[LabeledRow]]:
-    groups: dict[str, list[LabeledRow]] = defaultdict(list)
+    """Split whole sessions (Row.group), stratified, so related rows never cross splits."""
+    sessions: dict[str, list[LabeledRow]] = defaultdict(list)
     for row in rows:
-        groups[stratum(row)].append(row)
+        sessions[row.group()].append(row)
+    strata: dict[str, list[str]] = defaultdict(list)
+    for key, members in sessions.items():
+        strata[group_stratum(members)].append(key)
     rng = random.Random(seed)
     out: dict[str, list[LabeledRow]] = {name: [] for name in SPLIT_NAMES}
-    for key in sorted(groups):
-        members = sorted(groups[key], key=lambda r: r.id)
-        rng.shuffle(members)
+    for key in sorted(strata):
+        keys = sorted(strata[key])
+        rng.shuffle(keys)
         start = 0
-        for name, count in allocate(len(members)).items():
-            out[name].extend(members[start : start + count])
+        for name, count in allocate(len(keys)).items():
+            for session in keys[start : start + count]:
+                out[name].extend(sessions[session])
             start += count
     return {name: sorted(members, key=lambda r: r.id) for name, members in out.items()}
 

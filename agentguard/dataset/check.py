@@ -93,6 +93,7 @@ def check(paths: DataPaths) -> Report:
 def _check_splits(paths: DataPaths, report: Report) -> None:
     seen: dict[str, str] = {}
     fingerprints: dict[str, str] = {}
+    sessions: dict[str, str] = {}
     for name in SPLIT_NAMES:
         path = paths.split_file(name)
         if not path.is_file():
@@ -107,7 +108,11 @@ def _check_splits(paths: DataPaths, report: Report) -> None:
             except ValidationError as e:
                 report.errors.append(f"{where}: {_first_error(e)}")
                 continue
-            for key, table in ((row.id, seen), (row.fingerprint(), fingerprints)):
+            for key, table in (
+                (row.id, seen),
+                (row.fingerprint(), fingerprints),
+                (row.group(), sessions),
+            ):
                 if key in table and table[key] != name:
                     report.errors.append(f"{where}: {row.id} leaks between {table[key]} and {name}")
                 table[key] = name

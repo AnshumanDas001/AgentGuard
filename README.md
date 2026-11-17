@@ -66,12 +66,17 @@ Rows are labeled by hand under the rules in [data/labeling_rules.md](data/labeli
 make data-check     # validate every dataset file
 make data-stats     # counts per category against the targets
 make label          # label rows one at a time, blind to their source
+make label-sheet    # or label in a spreadsheet; then make import-labels SHEET=...
 uv run python -m agentguard.dataset import-log results/logs/<run>.jsonl --source <name>
+make injecagent      # add converted InjecAgent rows (pinned commit)
+make assebench       # add converted ASSEBench rows (pinned commit)
 make data-split     # stratified 50/20/30 split and test-set freeze (runs once)
 ```
 
 Unlabeled rows live in `data/raw/<source>.jsonl`; labels are appended to
 `data/labeled/labels.jsonl` (the latest decision per row wins).
+Sources and licenses are listed in [data/SOURCES.md](data/SOURCES.md). Rows from the same
+session are always kept in the same split, so related rows can't leak between train and test.
 
 ## Layout
 

@@ -60,7 +60,8 @@ def save_rows(paths: DataPaths, rows: list[Row], source: str = "handwritten") ->
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"tool": "format_disk"},
+        {"tool": "rm -rf"},
+        {"tool": ""},
         {"args": {}},
         {"args": {"command": "ls", "extra": 1}},
         {"tool": "send_email", "args": {"to": "dana@example.com", "subject": "s", "body": "b"}},
@@ -151,7 +152,7 @@ def test_check_reports_every_problem(paths):
     lines = [
         json.dumps(good),
         "{not json",
-        json.dumps({**good, "tool": "format_disk", "id": "r2"}),
+        json.dumps({**good, "tool": "not a tool", "id": "r2"}),
         json.dumps(good),  # duplicate id
         json.dumps({**good, "id": "r3"}),  # same action and context as r1
     ]
@@ -349,3 +350,31 @@ def test_import_rows_skips_identical_actions(paths):
     assert import_rows(paths, [first]) == (1, 0)
     assert import_rows(paths, [same_action, different]) == (1, 1)
     assert check(paths).ok
+
+
+def test_benchmark_tools_are_accepted_but_ours_stay_strict():
+    other = row("b1", tool="GmailReadEmail", args={"email_id": 7, "folder": ["inbox"]})
+    assert other.tool == "GmailReadEmail" and other.proposal().args["email_id"] == 7
+    with pytest.raises(ValidationError):
+        row("b2", tool="run_shell", args={"cmd": "ls"})
+
+
+def test_split_keeps_sessions_together(paths):
+    rows = [row(f"s{g}-{i}", meta={"run_id": f"run{g}"}) for g in range(20) for i in range(3)]
+    save_rows(paths, rows)
+    for r in rows:
+        append_label(paths, record(r.id, "safe"))
+    splits = assign(labeled_rows(paths), seed=0)
+    where = {r.meta["run_id"]: name for name, members in splits.items() for r in members}
+    for name, members in splits.items():
+        assert all(where[r.meta["run_id"]] == name for r in members)
+    assert {n: len(m) // 3 for n, m in splits.items()} == {"train": 10, "dev": 4, "test": 6}
+
+
+def test_check_flags_a_session_split_across_sets(paths):
+    a = row("a1", meta={"run_id": "r1"}).model_dump(mode="json")
+    b = row("a2", meta={"run_id": "r1"}).model_dump(mode="json")
+    label = {"label": "safe", "rules_version": "0.3", "labeled_at": "2026-11-17T00:00:00+00:00"}
+    write_jsonl(paths.split_file("train"), [{**a, **label}])
+    write_jsonl(paths.split_file("test"), [{**b, **label}])
+    assert any("leaks between train and test" in e for e in check(paths).errors)

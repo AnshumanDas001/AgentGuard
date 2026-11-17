@@ -25,7 +25,7 @@ from typing import Any
 
 import httpx
 
-from agentguard.dataset.schema import Row
+from agentguard.dataset.schema import MAX_HISTORY, TOOL_INPUTS, Row
 from agentguard.guard.schemas import format_step
 
 INJECAGENT_REPO = "uiuc-kang-lab/InjecAgent"
@@ -190,4 +190,219 @@ def rows_from_injecagent(data_dir: Path, per_user_tool: int = 5) -> tuple[list[R
                 },
             )
         )
+    return rows, skipped
+
+
+# --- ASSEBench ---------------------------------------------------------------------------
+#
+# ASSEBench (AgentAuditor, NeurIPS 2025; Apache-2.0): human-annotated agent interaction
+# records. Each in-scope record becomes up to two rows: its last tool call and the one
+# before it, each with the user's request as the task and the earlier calls (with their
+# outputs) as history. Calls matching the agent's five tools are renamed to them;
+# other tools keep their recorded names and arguments. ASSEBench's own labels, ambiguity
+# flag and risk description are kept in `meta` as a hidden cross-check, never shown while
+# labeling. Records whose opening message matches the R-Judge file bundled in the same repo
+# are skipped: R-Judge has no license.
+
+ASSEBENCH_REPO = "Astarojth/AgentAuditor-ASSEBench"
+ASSEBENCH_COMMIT = "fa5f99797073fd9a8d012268bc2b7dc27d05f4b1"  # 2026-05-29
+ASSEBENCH_FILES = {
+    "AgentJudge-safety.json": "ASSEBench/dataset/AgentJudge-safety.json",
+    "AgentJudge-security.json": "ASSEBench/dataset/AgentJudge-security.json",
+    "AgentJudge-loose.json": "ASSEBench/dataset/AgentJudge-loose.json",
+    "rjudge.json": "AgentAuditor/data/rjudge.json",
+}
+# Risk types whose harms fall in the seven categories. The rest (ethics, harmful content,
+# fraud and health risks) are out of scope, as labeling rules section 7 says.
+ASSEBENCH_IN_SCOPE = {
+    "safety": {
+        "Unauthorized Access & Control",
+        "Privacy Violations & Data Breach",
+        "Data Loss & Integrity Risk",
+        "Cybersecurity Vulnerabilities & Malicious Attacks",
+        "Operational, Systemic & Environmental Risks",
+    },
+    "security": {
+        "Prompt Injection",
+        "Unauthorized Access & Control",
+        "Data Exfiltration & Leakage",
+        "Data Tampering & Destruction",
+        "Fraud & Credential Abuse",
+    },
+}
+CALL = re.compile(r"^([A-Za-z_][\w.]*)\s*:?\s*([\{\[].*)$", re.DOTALL)
+END_ACTIONS = {"Complete", "Final"}
+EMAIL_KEYS = {
+    "to",
+    "recipient",
+    "receiver",
+    "email",
+    "subject",
+    "title",
+    "body",
+    "content",
+    "message",
+}
+
+
+def fetch_assebench(dest: Path) -> Path:
+    """Download the pinned ASSEBench files into `dest` (skips files already there)."""
+    dest.mkdir(parents=True, exist_ok=True)
+    for name, remote in ASSEBENCH_FILES.items():
+        path = dest / name
+        if not path.is_file():
+            url = f"https://raw.githubusercontent.com/{ASSEBENCH_REPO}/{ASSEBENCH_COMMIT}/{remote}"
+            response = httpx.get(url, timeout=120, follow_redirects=True)
+            response.raise_for_status()
+            path.write_bytes(response.content)
+    return dest
+
+
+def _turns(record: dict) -> list[dict]:
+    turns: list[dict] = []
+    for episode in record.get("contents") or []:
+        turns.extend(episode if isinstance(episode, list) else [episode])
+    return [t for t in turns if isinstance(t, dict)]
+
+
+def _opening(record: dict) -> str:
+    for turn in _turns(record):
+        if turn.get("role") == "user":
+            return str(turn.get("content") or "").strip()[:200]
+    return ""
+
+
+def parse_call(action: str) -> tuple[str, dict[str, Any]] | None:
+    """'ToolName: {...}' or 'ToolName{...}' -> (tool, args); None for non-calls."""
+    match = CALL.match((action or "").strip())
+    if match is None or match.group(1) in END_ACTIONS:
+        return None
+    args = _parse_args(match.group(2))
+    return match.group(1), args if args is not None else {"input": match.group(2).strip()}
+
+
+def map_call(tool: str, args: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """Rename calls that are one of the agent's five tools; leave everything else as is."""
+    path = args.get("file_name_or_path") or args.get("path") or args.get("file_path")
+    if tool in ("TerminalExecute", "bash") and isinstance(args.get("command"), str):
+        return "run_shell", {"command": args["command"]}
+    if tool == "read_file" and isinstance(path, str) and len(args) == 1:
+        return "read_file", {"path": path}
+    content = args.get("content")
+    if (
+        tool == "write_file"
+        and isinstance(path, str)
+        and isinstance(content, str)
+        and len(args) == 2
+    ):
+        return "write_file", {"path": path, "content": content}
+    if tool == "read_website" and isinstance(args.get("url"), str) and len(args) == 1:
+        return "http_request", {"method": "GET", "url": args["url"], "body": ""}
+    if tool in ("send_email", "GmailSendEmail") and set(args) <= EMAIL_KEYS:
+        to = args.get("to") or args.get("recipient") or args.get("receiver") or args.get("email")
+        body = args.get("body") or args.get("content") or args.get("message") or ""
+        if isinstance(to, str):
+            to = [a.strip() for a in re.split(r"[,;]", to) if a.strip()]
+        recipients_ok = isinstance(to, list) and to and all(isinstance(a, str) for a in to)
+        if recipients_ok and isinstance(body, str):
+            return "send_email", {
+                "to": to,
+                "subject": str(args.get("subject") or args.get("title") or ""),
+                "body": body,
+            }
+    if tool in TOOL_INPUTS:
+        # Same name as one of the agent's tools but different arguments (an extra sender,
+        # an attachment): keep every detail, under a name that can't pass for ours.
+        return f"{tool}_external", args
+    return tool, args
+
+
+def rows_from_record(
+    record: dict, subset: str, loose_label: Any = None, steps_per_record: int = 2
+) -> list[Row]:
+    """Rows for the record's last `steps_per_record` tool calls, each in the context of
+    everything before it. The last call keeps the plain record id; earlier ones get -stepN."""
+    steps: list[list[Any]] = []  # [tool, args, output]
+    users: list[tuple[int, str]] = []  # (calls made before this message, text)
+    for turn in _turns(record):
+        role = turn.get("role")
+        if role == "user" and str(turn.get("content") or "").strip():
+            users.append((len(steps), str(turn["content"]).strip()))
+        elif role == "agent":
+            call = parse_call(str(turn.get("action") or ""))
+            if call is not None:
+                steps.append([*map_call(*call), ""])
+        elif role == "environment" and steps and not steps[-1][2]:
+            steps[-1][2] = str(turn.get("content") or "")
+    rows = []
+    base_id = f"assebench-{subset}-{str(record.get('id')).lower()}"
+    for position in range(len(steps) - 1, max(len(steps) - 1 - steps_per_record, -1), -1):
+        messages = [text for before, text in users if before <= position]
+        if not messages:
+            continue
+        task = messages[0] + "".join(f"\n\nLater the user said: {m}" for m in messages[1:])
+        history = [
+            format_step(tool, args, executed=True, decision="allow", output=output)
+            for tool, args, output in steps[:position]
+        ][-MAX_HISTORY:]
+        tool, args, _ = steps[position]
+        is_last = position == len(steps) - 1
+        meta = {
+            "benchmark": "ASSEBench",
+            "license": "Apache-2.0",
+            "repo": ASSEBENCH_REPO,
+            "commit": ASSEBENCH_COMMIT,
+            "subset": subset,
+            "record_id": record.get("id"),
+            "risk_type": record.get("risk_type"),
+            "application_scenario": record.get("application_scenario"),
+            "failure_mode": record.get("failure_mode"),
+            "suggested_label": "unsafe" if str(record.get("label")) == "1" else "safe",
+            "ambiguous": str(record.get("ambiguous")) == "1",
+            "risk_description": str(record.get("risk_description") or "")[:600],
+        }
+        if loose_label is not None:
+            meta["suggested_label_lenient"] = "unsafe" if str(loose_label) == "1" else "safe"
+        meta["step"] = position + 1
+        meta["steps_in_record"] = len(steps)
+        # ASSEBench labels whole records; for an earlier step it is only a weak hint.
+        meta["is_last_call"] = is_last
+        rows.append(
+            Row(
+                id=base_id if is_last else f"{base_id}-step{position + 1}",
+                source="assebench",
+                task=task,
+                history=history,
+                tool=tool,
+                args=args,
+                meta=meta,
+            )
+        )
+    return rows
+
+
+def rows_from_assebench(
+    data_dir: Path, steps_per_record: int = 2
+) -> tuple[list[Row], dict[str, int]]:
+    """Rows from the in-scope records of both subsets, plus counts of what was skipped."""
+    load = lambda name: json.loads((data_dir / name).read_text())  # noqa: E731
+    rjudge = {_opening(r) for r in load("rjudge.json")} - {""}
+    loose = {r.get("id"): r.get("label") for r in load("AgentJudge-loose.json")}
+    rows: list[Row] = []
+    skipped = {"out of scope": 0, "copied from R-Judge": 0, "no tool call": 0}
+    for subset in ("safety", "security"):
+        for record in load(f"AgentJudge-{subset}.json"):
+            if record.get("risk_type") not in ASSEBENCH_IN_SCOPE[subset]:
+                skipped["out of scope"] += 1
+            elif subset == "safety" and _opening(record) in rjudge:
+                skipped["copied from R-Judge"] += 1
+            elif found := rows_from_record(
+                record,
+                subset,
+                loose.get(record.get("id")) if subset == "safety" else None,
+                steps_per_record,
+            ):
+                rows.extend(found)
+            else:
+                skipped["no tool call"] += 1
     return rows, skipped

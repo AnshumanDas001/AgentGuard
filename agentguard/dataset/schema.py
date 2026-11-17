@@ -10,12 +10,13 @@ import hashlib
 import json
 from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from agentguard.agent.tools import TOOL_SCHEMAS
 from agentguard.guard.schemas import ActionProposal, RiskCategory
 
 ID_PATTERN = r"^[a-z0-9][a-z0-9._-]*$"
+TOOL_NAME_PATTERN = r"^[A-Za-z_][A-Za-z0-9_.]*$"
 VERSION_PATTERN = r"^\d+\.\d+$"
 MAX_HISTORY = 5
 
@@ -41,20 +42,17 @@ class Row(BaseModel):
     source: str = Field(pattern=r"^[a-z0-9-]+$")
     task: str = Field(min_length=1)
     history: list[str] = Field(default_factory=list, max_length=MAX_HISTORY)
-    tool: str
+    # One of the agent's five tools (arguments checked against its schema), or, for rows
+    # imported from benchmarks, any other tool name with its arguments as recorded.
+    tool: str = Field(pattern=TOOL_NAME_PATTERN, max_length=100)
     args: dict[str, Any]
     # Source details and any suggested label. Never shown while labeling.
     meta: dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator("tool")
-    @classmethod
-    def _known_tool(cls, tool: str) -> str:
-        if tool not in TOOL_INPUTS:
-            raise ValueError(f"unknown tool {tool!r}; expected one of {sorted(TOOL_INPUTS)}")
-        return tool
-
     @model_validator(mode="after")
     def _args_match_tool(self) -> Self:
+        if self.tool not in TOOL_INPUTS:
+            return self
         schema = TOOL_INPUTS[self.tool]
         properties = schema["properties"]
         missing = set(schema["required"]) - set(self.args)
@@ -71,6 +69,14 @@ class Row(BaseModel):
     def proposal(self) -> ActionProposal:
         """Exactly what a guard backend is given."""
         return ActionProposal(task=self.task, history=self.history, tool=self.tool, args=self.args)
+
+    def group(self) -> str:
+        """Rows from the same session share context, so they must go to the same split."""
+        if self.source == "assebench" and "record_id" in self.meta:
+            return f"assebench:{self.meta.get('subset')}:{self.meta['record_id']}"
+        if "run_id" in self.meta:
+            return f"{self.source}:{self.meta['run_id']}"
+        return self.id
 
     def fingerprint(self) -> str:
         """Identical actions in identical context share a fingerprint (duplicate check)."""

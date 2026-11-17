@@ -39,6 +39,7 @@ def main() -> int:
     written_p.add_argument("workbook", type=Path)
     injec_p = sub.add_parser("import-injecagent", help="fetch InjecAgent and add converted rows")
     injec_p.add_argument("--per-tool", type=int, default=5, help="cases per user tool (17 tools)")
+    sub.add_parser("import-assebench", help="fetch ASSEBench and add in-scope converted rows")
     split_p = sub.add_parser("split", help="stratified split and freeze (runs once)")
     split_p.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
@@ -109,6 +110,16 @@ def main() -> int:
                 print(f"skipped {note}")
             added, existing = import_rows(paths, rows)
             print(f"added {added} rows to data/raw/injecagent.jsonl ({existing} already there)")
+            return 0
+        if args.command == "import-assebench":
+            folder = benchmarks.fetch_assebench(paths.root / "external" / "assebench")
+            rows, skipped = benchmarks.rows_from_assebench(folder)
+            print("skipped records: " + ", ".join(f"{n} {why}" for why, n in skipped.items()))
+            added, existing = import_rows(paths, rows)
+            print(
+                f"added {added} rows to data/raw/assebench.jsonl "
+                f"({existing} skipped: already in the dataset)"
+            )
             return 0
         if args.command == "split":
             print(json.dumps(split_and_freeze(paths, seed=args.seed), indent=2))

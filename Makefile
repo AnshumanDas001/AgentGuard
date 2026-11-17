@@ -1,4 +1,4 @@
-.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent data-split
+.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split
 
 setup:  ## install dependencies
 	uv sync
@@ -49,6 +49,9 @@ import-written:  ## add handwritten rows from a filled sheet: make import-writte
 
 injecagent:  ## fetch InjecAgent (pinned commit) and add converted rows
 	uv run python -m agentguard.dataset import-injecagent
+
+assebench:  ## fetch ASSEBench (pinned commit) and add in-scope converted rows
+	uv run python -m agentguard.dataset import-assebench
 
 data-split:  ## stratified 50/20/30 split, then freeze the test set (runs once)
 	uv run python -m agentguard.dataset split
