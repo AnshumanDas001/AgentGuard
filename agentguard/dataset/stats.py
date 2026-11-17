@@ -2,21 +2,37 @@
 
 from __future__ import annotations
 
-import math
 from collections import Counter
 
 from agentguard.dataset.store import DataPaths, load_labels, load_rows
 from agentguard.guard.schemas import RiskCategory
 
-# Rules section 9: per category, the TEST split needs these; the full dataset scales by 1/0.3.
+# Rules section 9 (D7, option 2): per-category results are graded by how many unsafe rows the
+# TEST split will hold (about TEST_SHARE of each category), and every category needs a floor.
 TEST_SHARE = 0.3
-TEST_MIN_UNSAFE = 30
-TEST_MIN_HARD_NEGATIVES = 15
-TARGET_UNSAFE_SHARE = 0.40
-TARGET_HARD_NEGATIVE_SHARE = 1 / 3
+TEST_MEASURABLE = 30  # unsafe rows in test for a per-category result to count as a headline
+TEST_INDICATIVE = 10  # below this in test, a per-category result is "too few to measure"
+FLOOR_UNSAFE = 20  # full dataset, per category: so no category is near-empty
+FLOOR_HARD_NEGATIVES = 10
+TARGET_HARD_NEGATIVE_SHARE = 0.25
 
-FULL_MIN_UNSAFE = math.ceil(TEST_MIN_UNSAFE / TEST_SHARE)
-FULL_MIN_HARD_NEGATIVES = math.ceil(TEST_MIN_HARD_NEGATIVES / TEST_SHARE)
+
+def tier(unsafe: int) -> str:
+    """How a category's test result can be reported, from its full-dataset unsafe count."""
+    in_test = unsafe * TEST_SHARE
+    if in_test >= TEST_MEASURABLE:
+        return "measurable"
+    if in_test >= TEST_INDICATIVE:
+        return "indicative"
+    return "too few"
+
+
+def shortfall(unsafe: int, hard: int) -> str:
+    """Rows still needed to reach the floor, or '' if it is met."""
+    need = [f"{FLOOR_UNSAFE - unsafe} unsafe"] if unsafe < FLOOR_UNSAFE else []
+    if hard < FLOOR_HARD_NEGATIVES:
+        need.append(f"{FLOOR_HARD_NEGATIVES - hard} look-alike")
+    return "needs " + " + ".join(need) if need else ""
 
 
 def compute(paths: DataPaths) -> dict:
@@ -53,20 +69,23 @@ def render(s: dict) -> str:
     lines = [
         f"Rows: {s['rows']}  labeled: {s['labeled']}  unlabeled: {s['unlabeled']}  "
         f"excluded: {s['excluded']}",
-        f"Unsafe: {s['unsafe']} of {usable} ({_pct(s['unsafe'], usable)}; "
-        f"target {TARGET_UNSAFE_SHARE:.0%})",
+        f"Unsafe: {s['unsafe']} of {usable} ({_pct(s['unsafe'], usable)}; no target: guards are "
+        "scored per class, so the mix does not bias recall or false-positive rate)",
         f"Hard negatives: {s['hard_negatives']} of {s['safe']} safe "
-        f"({_pct(s['hard_negatives'], s['safe'])}; target at least 33%)",
+        f"({_pct(s['hard_negatives'], s['safe'])}; target at least "
+        f"{TARGET_HARD_NEGATIVE_SHARE:.0%})",
         f"Ambiguous: {s['ambiguous']}",
         "",
-        f"{'Category':34} {'unsafe':>8} {'hard neg':>9}   "
-        f"(full-dataset targets {FULL_MIN_UNSAFE} / {FULL_MIN_HARD_NEGATIVES})",
+        f"{'Category':34} {'unsafe':>7} {'hard neg':>9} {'≈ test':>7}  {'result':11} floor "
+        f"({FLOOR_UNSAFE} / {FLOOR_HARD_NEGATIVES})",
     ]
     for category in RiskCategory:
         u = s["unsafe_by_category"][category]
         h = s["hard_by_category"][category]
-        flag = "" if u >= FULL_MIN_UNSAFE and h >= FULL_MIN_HARD_NEGATIVES else "  below target"
-        lines.append(f"{category.value:34} {u:>8} {h:>9}{flag}")
+        lines.append(
+            f"{category.value:34} {u:>7} {h:>9} {round(u * TEST_SHARE):>7}  {tier(u):11} "
+            f"{shortfall(u, h) or 'ok'}"
+        )
     lines += ["", f"{'Source':34} {'rows':>8} {'labeled':>9}"]
     for source, n in sorted(s["by_source"].items()):
         lines.append(f"{source:34} {n:>8} {s['labeled_by_source'][source]:>9}")

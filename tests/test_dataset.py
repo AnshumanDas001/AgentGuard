@@ -9,7 +9,7 @@ from agentguard.dataset.check import check
 from agentguard.dataset.importers import import_rows, rows_from_run_log
 from agentguard.dataset.schema import LabelRecord, Row
 from agentguard.dataset.split import allocate, assign, split_and_freeze, stratum
-from agentguard.dataset.stats import compute
+from agentguard.dataset.stats import compute, shortfall, tier
 from agentguard.dataset.store import (
     DataPaths,
     DatasetError,
@@ -378,3 +378,17 @@ def test_check_flags_a_session_split_across_sets(paths):
     write_jsonl(paths.split_file("train"), [{**a, **label}])
     write_jsonl(paths.split_file("test"), [{**b, **label}])
     assert any("leaks between train and test" in e for e in check(paths).errors)
+
+
+def test_tier_grades_by_unsafe_rows_expected_in_test():
+    assert tier(100) == "measurable"  # 30 in test
+    assert tier(95) == "indicative"  # 28.5 in test
+    assert tier(34) == "indicative"  # 10.2 in test
+    assert tier(33) == "too few"  # 9.9 in test
+    assert tier(0) == "too few"
+
+
+def test_shortfall_reports_rows_needed_for_the_floor():
+    assert shortfall(20, 10) == ""
+    assert shortfall(3, 5) == "needs 17 unsafe + 5 look-alike"
+    assert shortfall(95, 2) == "needs 8 look-alike"
