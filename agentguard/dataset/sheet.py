@@ -97,10 +97,14 @@ def _guide(wb: Workbook, version: str) -> None:
     ws.column_dimensions["A"].width = 110
 
 
-def export_sheet(paths: DataPaths, out: Path, seed: int = 0) -> int:
-    """Write unlabeled rows to `out` in a fixed shuffled order. Returns the row count."""
+def export_sheet(paths: DataPaths, out: Path, seed: int = 0, ids: set[str] | None = None) -> int:
+    """Write unlabeled rows (only those in `ids`, if given) to `out` in a fixed shuffled
+    order. Returns the row count."""
     labeled = load_labels(paths)
-    rows = sorted((r for r in load_rows(paths) if r.id not in labeled), key=lambda r: r.id)
+    rows = sorted(
+        (r for r in load_rows(paths) if r.id not in labeled and (ids is None or r.id in ids)),
+        key=lambda r: r.id,
+    )
     random.Random(seed).shuffle(rows)
     version = rules_version(paths)
 

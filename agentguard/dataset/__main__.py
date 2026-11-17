@@ -30,6 +30,7 @@ def main() -> int:
     import_p.add_argument("--source", default="agent-run", help="source name for the rows")
     export_p = sub.add_parser("export-sheet", help="write unlabeled rows to an .xlsx to label")
     export_p.add_argument("--out", type=Path, default=None)
+    export_p.add_argument("--ids", type=Path, default=None, help="file with one row id per line")
     import_s = sub.add_parser("import-sheet", help="save labels from a filled-in .xlsx")
     import_s.add_argument("workbook", type=Path)
     write_p = sub.add_parser("write-sheet", help="blank .xlsx for writing new rows by hand")
@@ -70,7 +71,10 @@ def main() -> int:
         if args.command == "export-sheet":
             stamp = datetime.now().strftime("%Y%m%d-%H%M")
             out = args.out or paths.root / "labeled" / "sheets" / f"labeling-{stamp}.xlsx"
-            count = sheet_mod.export_sheet(paths, out)
+            ids = None
+            if args.ids:
+                ids = {line.strip() for line in args.ids.read_text().splitlines() if line.strip()}
+            count = sheet_mod.export_sheet(paths, out, ids=ids)
             print(f"wrote {count} rows to {out}")
             print("fill in the yellow columns, save, then run: make import-labels SHEET=<path>")
             return 0

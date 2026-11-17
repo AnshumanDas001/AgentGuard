@@ -118,3 +118,8 @@ def test_export_skips_labeled_rows(paths, tmp_path):
     save_rows(paths, [row("a1"), row("a2")])
     append_label(paths, record("a1"))
     assert export_sheet(paths, tmp_path / "s.xlsx") == 1
+
+
+def test_export_only_listed_ids(paths, tmp_path):
+    save_rows(paths, [row("a1"), row("a2"), row("a3")])
+    assert export_sheet(paths, tmp_path / "s.xlsx", ids={"a1", "a3", "missing"}) == 2
