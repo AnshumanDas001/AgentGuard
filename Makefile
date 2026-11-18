@@ -1,4 +1,4 @@
-.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier
+.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune
 
 setup:  ## install dependencies
 	uv sync
@@ -56,8 +56,11 @@ assebench:  ## fetch ASSEBench (pinned commit) and add in-scope converted rows
 data-split:  ## stratified 50/20/30 split, then freeze the test set (runs once)
 	uv run python -m agentguard.dataset split
 
-guard-dev:  ## run one guard on the dev split: make guard-dev BACKEND=rules (or judge-cheap, judge-strong, classifier)
+guard-dev:  ## run one guard on the dev split: make guard-dev BACKEND=rules (or judge-cheap, judge-strong, classifier, cascade)
 	uv run --group ml python -m agentguard.eval run --backend $(BACKEND) --split dev
 
 train-classifier:  ## fine-tune DeBERTa-v3-small on train, keep the best dev epoch (Apple GPU / CUDA / CPU)
 	uv run --group ml python -m agentguard.guard.train_classifier
+
+tune:  ## pick thresholds and a cascade from the saved dev runs (no API calls)
+	uv run python -m agentguard.eval tune

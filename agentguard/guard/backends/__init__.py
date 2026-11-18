@@ -6,7 +6,7 @@ from agentguard.guard.backends.allow_all import AllowAll
 from agentguard.guard.backends.rules import RulesBackend
 from agentguard.guard.schemas import GuardBackend
 
-BACKEND_NAMES = ("allow_all", "rules", "judge-cheap", "judge-strong", "classifier")
+BACKEND_NAMES = ("allow_all", "rules", "judge-cheap", "judge-strong", "classifier", "cascade")
 
 
 def build_backend(name: str) -> GuardBackend:
@@ -22,6 +22,10 @@ def build_backend(name: str) -> GuardBackend:
         from agentguard.guard.backends.classifier import ClassifierBackend
 
         return ClassifierBackend.load()
+    if name == "cascade":
+        from agentguard.guard.policy import default_cascade
+
+        return default_cascade()
     raise ValueError(f"unknown backend {name!r}; choose from {', '.join(BACKEND_NAMES)}")
 
 

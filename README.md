@@ -104,7 +104,8 @@ Each guard reads one proposed action (task, history, tool, arguments) and return
 | `jev` | TypeSafe's Jev; waiting for API access | |
 
 ```bash
-make guard-dev BACKEND=rules      # or judge-cheap, judge-strong, classifier
+make guard-dev BACKEND=rules      # or judge-cheap, judge-strong, classifier, cascade
+make tune                         # thresholds and cascade from the saved dev runs
 make train-classifier             # needs the ml group: uv sync --group ml
 ```
 
@@ -133,6 +134,45 @@ Caveats:
 Per-row verdicts and summaries are in `results/runs/`; the classifier's training record is
 in `results/classifier/metrics.json`.
 
+### Thresholds and the cascade
+
+`make tune` picks each guard's thresholds from its saved dev verdicts, using rules fixed in
+advance: block only above the point where at most 1% of safe rows would be blocked, and
+auto-allow only below the point where at most 5% of unsafe rows would get through. Anything
+in between is escalated to a human. It costs nothing: no guard is called again.
+
+| Guard (dev-tuned) | Allow below | Block above | Unsafe let through | Safe blocked | Sent to a human |
+|---|---|---|---|---|---|
+| rules | never allows | 0.83 | 0 of 43 | 0 of 148 | 187 of 191 |
+| classifier | 0.016 | 0.51 | 2 | 1 | 98 |
+| judge-cheap | 0.045 | 0.38 | 1 | 1 | 91 |
+| judge-strong | 0.24 | 0.71 | 2 | 1 | 24 |
+
+A cheap guard on its own is cheap but sends half of all actions to a human, while the strong
+judge is accurate but costs about 33 times more. The **cascade** (in `policy.py`, after
+FrugalGPT) combines them: the cheap judge decides the actions it is sure about, and only
+the rest go to the strong judge. `make tune` replays 8 possible cascades on the saved dev
+verdicts and picks the cheapest that lets through no more unsafe actions, blocks no more
+safe ones and escalates no more than the strong judge alone (fewer stages win when the
+saving is under 5%).
+
+| Dev, 191 rows | Unsafe let through | Safe blocked | Sent to a human | Cost per 1,000 checks |
+|---|---|---|---|---|
+| judge-strong alone | 2 | 1 | 24 | $7.55 |
+| **cascade: judge-cheap, then judge-strong** | 2 | 1 | 21 | **$4.51 (40% less)** |
+
+Only 48% of actions reach the strong judge. Adding the rules in front saves under 0.1%,
+and putting the classifier in front is cheaper still ($2.83) but lets 4 unsafe actions
+through instead of 2. The cascade is a backend like the others
+(`make guard-dev BACKEND=cascade`); the runner and the interceptor apply each guard's tuned
+thresholds automatically.
+
+Caveats: with 43 unsafe dev rows, "at most 5%" means at most 2 rows, so these thresholds
+are rough. A live run of the cascade on 10 dev rows agreed with the replay on 9; the other
+differed because LLM judges give slightly different scores each time they are asked. The
+plan's cost-versus-recall sweep and the final numbers come from the test split in Phase 4.
+Choices and per-candidate results are in `results/tuning/`.
+
 ## Layout
 
 ```
@@ -142,11 +182,11 @@ agentguard/
   guard/
     schemas.py   ActionProposal, Verdict, GuardBackend, RiskCategory
     interceptor.py
-    policy.py    thresholds (cascade comes in Phase 3)
+    policy.py    thresholds, tuned thresholds, and the cascade
     logger.py    JSONL logger
     backends/    allow_all.py, rules.py, llm_judge.py, classifier.py (jev to come)
     train_classifier.py  fine-tunes the DeBERTa guard
-  eval/          run a guard over a split and summarise it
+  eval/          run a guard over a split and summarise it; tune.py picks thresholds and a cascade
   dataset/       row format, validator, stats, labeling tool, split and freeze
   pricing.py     token prices for cost per decision
 sandbox/         Dockerfile + seeded fake project and canary secrets

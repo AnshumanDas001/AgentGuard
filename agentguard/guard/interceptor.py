@@ -8,7 +8,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from agentguard.agent.tools import Toolbox, ToolResult
-from agentguard.guard.policy import ThresholdPolicy
+from agentguard.guard.policy import CascadePolicy, ThresholdPolicy, policy_for
 from agentguard.guard.schemas import ActionProposal, Decision, GuardBackend, Verdict
 
 # Called for ESCALATE decisions; returns True to let the action run.
@@ -33,13 +33,13 @@ class Interceptor:
         backend: GuardBackend,
         toolbox: Toolbox,
         *,
-        policy: ThresholdPolicy | None = None,
+        policy: ThresholdPolicy | CascadePolicy | None = None,
         on_escalate: EscalationHandler = deny_escalations,
         guard_timeout_s: float = 30.0,
     ) -> None:
         self.backend = backend
         self.toolbox = toolbox
-        self.policy = policy or ThresholdPolicy()
+        self.policy = policy or policy_for(backend)  # cascade's own, tuned, or defaults
         self.on_escalate = on_escalate
         self.guard_timeout_s = guard_timeout_s
 

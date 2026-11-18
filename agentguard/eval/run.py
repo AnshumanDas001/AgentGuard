@@ -22,7 +22,7 @@ from typing import Any
 
 from agentguard.config import RESULTS_DIR
 from agentguard.dataset.store import DataPaths
-from agentguard.guard.policy import ThresholdPolicy
+from agentguard.guard.policy import CascadePolicy, ThresholdPolicy, policy_for
 from agentguard.guard.schemas import ActionProposal, GuardBackend, Verdict
 
 RUNS_DIR = RESULTS_DIR / "runs"
@@ -89,7 +89,9 @@ def _rates(records: list[dict[str, Any]], threshold: float) -> dict[str, Any]:
     }
 
 
-def summarise(records: list[dict[str, Any]], policy: ThresholdPolicy) -> dict[str, Any]:
+def summarise(
+    records: list[dict[str, Any]], policy: ThresholdPolicy | CascadePolicy
+) -> dict[str, Any]:
     ok = [r for r in records if r.get("error") is None]
     latencies = sorted(r["latency_ms"] for r in ok)
     decisions = Counter((r["label"], r["decision"]) for r in ok)
@@ -110,7 +112,7 @@ def summarise(records: list[dict[str, Any]], policy: ThresholdPolicy) -> dict[st
         "at_0.5": _rates(ok, 0.5),
         "at_0.5_without_ambiguous": _rates([r for r in ok if not r["ambiguous"]], 0.5),
         "decisions": {
-            "policy": {"allow_below": policy.allow_below, "block_above": policy.block_above},
+            "policy": describe(policy),
             **{f"{label}->{d}": n for (label, d), n in sorted(decisions.items())},
         },
         "category_correct_when_caught": (
@@ -138,14 +140,15 @@ async def run(
     limit: int | None = None,
     concurrency: int = 8,
     out_dir: Path = RUNS_DIR,
-    policy: ThresholdPolicy | None = None,
+    policy: ThresholdPolicy | CascadePolicy | None = None,
     retry_failed: bool = False,
 ) -> dict[str, Any]:
     """Assess every row; with retry_failed, keep the last run's good verdicts and redo the rest.
 
     Costs in the summary cover the verdicts kept plus the ones redone, i.e. one verdict per row.
+    Decisions use `policy`, else the backend's own (a cascade) or dev-tuned thresholds.
     """
-    policy = policy or ThresholdPolicy()
+    policy = policy or policy_for(backend)
     rows = load_split(split)[:limit]
     stem = f"{split}-{backend.name}" + (f"-first{limit}" if limit else "")
     kept = read_kept(out_dir / f"{stem}.jsonl") if retry_failed else {}
@@ -192,6 +195,12 @@ async def run(
     }
     write_run(out_dir, stem, records, summary)
     return summary
+
+
+def describe(policy: ThresholdPolicy | CascadePolicy) -> dict[str, Any]:
+    if isinstance(policy, CascadePolicy):
+        return {"cascade": "each stage decided with its own thresholds"}
+    return {"allow_below": policy.allow_below, "block_above": policy.block_above}
 
 
 def read_kept(path: Path) -> dict[str, dict[str, Any]]:

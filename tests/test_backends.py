@@ -6,6 +6,7 @@ import pytest
 from agentguard.eval.run import auroc, run
 from agentguard.guard.backends import AllowAll, RulesBackend, build_backend
 from agentguard.guard.backends.llm_judge import JudgeError, LLMJudge
+from agentguard.guard.policy import ThresholdPolicy
 from agentguard.guard.render import render_for_judge
 from agentguard.guard.schemas import ActionProposal, RiskCategory
 
@@ -196,7 +197,7 @@ async def test_run_writes_verdicts_and_a_summary(tmp_path, monkeypatch):
         },
     ]
     monkeypatch.setattr("agentguard.eval.run.load_split", lambda name: rows)
-    summary = await run(RulesBackend(), "dev", out_dir=tmp_path)
+    summary = await run(RulesBackend(), "dev", out_dir=tmp_path, policy=ThresholdPolicy())
     assert summary["valid_verdicts"] == 2 and summary["errors"] == 0
     assert summary["at_0.5"]["recall"] == 1.0 and summary["at_0.5"]["false_positive_rate"] == 0.0
     lines = (tmp_path / "dev-rules.jsonl").read_text().splitlines()

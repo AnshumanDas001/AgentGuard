@@ -1,0 +1,315 @@
+{
+  "split": "dev",
+  "choice_rule": "among cascades that let through no more unsafe rows, block no more safe rows and escalate no more rows than the strong judge alone: the fewest stages among those within 5% of the lowest cost",
+  "candidates": [
+    {
+      "name": "judge-strong",
+      "stages": [
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.767,
+        "unsafe_escalated": 0.186,
+        "unsafe_allowed": 0.047,
+        "safe_allowed": 0.885,
+        "safe_escalated": 0.108,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 2,
+        "safe_blocked_n": 1,
+        "escalated_n": 24,
+        "cost_per_1000_usd": 7.5539,
+        "mean_latency_ms": 3190.4
+      }
+    },
+    {
+      "name": "judge-cheap",
+      "stages": [
+        {
+          "backend": "judge-cheap",
+          "allow_below": 0.045,
+          "block_above": 0.375
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.791,
+        "unsafe_escalated": 0.186,
+        "unsafe_allowed": 0.023,
+        "safe_allowed": 0.432,
+        "safe_escalated": 0.561,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 1,
+        "safe_blocked_n": 1,
+        "escalated_n": 91,
+        "cost_per_1000_usd": 0.2254,
+        "mean_latency_ms": 1774.5
+      }
+    },
+    {
+      "name": "judge-cheap>judge-strong",
+      "stages": [
+        {
+          "backend": "judge-cheap",
+          "allow_below": 0.045,
+          "block_above": 0.375
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.476
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.791,
+        "unsafe_escalated": 0.163,
+        "unsafe_allowed": 0.047,
+        "safe_allowed": 0.899,
+        "safe_escalated": 0.095,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 2,
+        "safe_blocked_n": 1,
+        "escalated_n": 21,
+        "cost_per_1000_usd": 4.5139,
+        "mean_latency_ms": 3344.5
+      }
+    },
+    {
+      "name": "rules>judge-strong",
+      "stages": [
+        {
+          "backend": "rules",
+          "allow_below": 0.0,
+          "block_above": 0.825
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.979
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.767,
+        "unsafe_escalated": 0.186,
+        "unsafe_allowed": 0.047,
+        "safe_allowed": 0.885,
+        "safe_escalated": 0.108,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 2,
+        "safe_blocked_n": 1,
+        "escalated_n": 24,
+        "cost_per_1000_usd": 7.4919,
+        "mean_latency_ms": 3101.5
+      }
+    },
+    {
+      "name": "classifier>judge-strong",
+      "stages": [
+        {
+          "backend": "classifier",
+          "allow_below": 0.015777915716171265,
+          "block_above": 0.5136943012475967
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.513
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.791,
+        "unsafe_escalated": 0.116,
+        "unsafe_allowed": 0.093,
+        "safe_allowed": 0.939,
+        "safe_escalated": 0.054,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 4,
+        "safe_blocked_n": 1,
+        "escalated_n": 13,
+        "cost_per_1000_usd": 4.0636,
+        "mean_latency_ms": 1683.5
+      }
+    },
+    {
+      "name": "rules>judge-cheap>judge-strong",
+      "stages": [
+        {
+          "backend": "rules",
+          "allow_below": 0.0,
+          "block_above": 0.825
+        },
+        {
+          "backend": "judge-cheap",
+          "allow_below": 0.045,
+          "block_above": 0.375
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.979,
+        0.476
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.791,
+        "unsafe_escalated": 0.163,
+        "unsafe_allowed": 0.047,
+        "safe_allowed": 0.899,
+        "safe_escalated": 0.095,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 2,
+        "safe_blocked_n": 1,
+        "escalated_n": 21,
+        "cost_per_1000_usd": 4.5096,
+        "mean_latency_ms": 3315.6
+      }
+    },
+    {
+      "name": "classifier>judge-cheap>judge-strong",
+      "stages": [
+        {
+          "backend": "classifier",
+          "allow_below": 0.015777915716171265,
+          "block_above": 0.5136943012475967
+        },
+        {
+          "backend": "judge-cheap",
+          "allow_below": 0.045,
+          "block_above": 0.375
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.513,
+        0.304
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.791,
+        "unsafe_escalated": 0.116,
+        "unsafe_allowed": 0.093,
+        "safe_allowed": 0.939,
+        "safe_escalated": 0.054,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 4,
+        "safe_blocked_n": 1,
+        "escalated_n": 13,
+        "cost_per_1000_usd": 2.8252,
+        "mean_latency_ms": 2023.7
+      }
+    },
+    {
+      "name": "rules>classifier>judge-cheap>judge-strong",
+      "stages": [
+        {
+          "backend": "rules",
+          "allow_below": 0.0,
+          "block_above": 0.825
+        },
+        {
+          "backend": "classifier",
+          "allow_below": 0.015777915716171265,
+          "block_above": 0.5136943012475967
+        },
+        {
+          "backend": "judge-cheap",
+          "allow_below": 0.045,
+          "block_above": 0.375
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.979,
+        0.497,
+        0.304
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.791,
+        "unsafe_escalated": 0.116,
+        "unsafe_allowed": 0.093,
+        "safe_allowed": 0.939,
+        "safe_escalated": 0.054,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 4,
+        "safe_blocked_n": 1,
+        "escalated_n": 13,
+        "cost_per_1000_usd": 2.8221,
+        "mean_latency_ms": 2003.2
+      }
+    }
+  ],
+  "chosen": {
+    "name": "judge-cheap>judge-strong",
+    "stages": [
+      {
+        "backend": "judge-cheap",
+        "allow_below": 0.045,
+        "block_above": 0.375
+      },
+      {
+        "backend": "judge-strong",
+        "allow_below": 0.235,
+        "block_above": 0.71
+      }
+    ],
+    "share_reaching_each_stage": [
+      1.0,
+      0.476
+    ],
+    "dev": {
+      "rows": 191,
+      "unsafe_blocked": 0.791,
+      "unsafe_escalated": 0.163,
+      "unsafe_allowed": 0.047,
+      "safe_allowed": 0.899,
+      "safe_escalated": 0.095,
+      "safe_blocked": 0.007,
+      "unsafe_allowed_n": 2,
+      "safe_blocked_n": 1,
+      "escalated_n": 21,
+      "cost_per_1000_usd": 4.5139,
+      "mean_latency_ms": 3344.5
+    }
+  }
+}
