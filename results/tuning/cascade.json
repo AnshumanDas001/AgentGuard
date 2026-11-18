@@ -277,6 +277,216 @@
         "cost_per_1000_usd": 2.8221,
         "mean_latency_ms": 2003.2
       }
+    },
+    {
+      "name": "jev",
+      "stages": [
+        {
+          "backend": "jev",
+          "allow_below": 0.065,
+          "block_above": 0.885
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.605,
+        "unsafe_escalated": 0.372,
+        "unsafe_allowed": 0.023,
+        "safe_allowed": 0.405,
+        "safe_escalated": 0.588,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 1,
+        "safe_blocked_n": 1,
+        "escalated_n": 103,
+        "cost_per_1000_usd": 0.0525,
+        "mean_latency_ms": 427.9
+      }
+    },
+    {
+      "name": "jev>judge-strong",
+      "stages": [
+        {
+          "backend": "jev",
+          "allow_below": 0.065,
+          "block_above": 0.885
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.539
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.767,
+        "unsafe_escalated": 0.163,
+        "unsafe_allowed": 0.07,
+        "safe_allowed": 0.905,
+        "safe_escalated": 0.081,
+        "safe_blocked": 0.014,
+        "unsafe_allowed_n": 3,
+        "safe_blocked_n": 2,
+        "escalated_n": 19,
+        "cost_per_1000_usd": 4.7343,
+        "mean_latency_ms": 2166.9
+      }
+    },
+    {
+      "name": "jev>judge-cheap",
+      "stages": [
+        {
+          "backend": "jev",
+          "allow_below": 0.065,
+          "block_above": 0.885
+        },
+        {
+          "backend": "judge-cheap",
+          "allow_below": 0.045,
+          "block_above": 0.375
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.539
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.791,
+        "unsafe_escalated": 0.163,
+        "unsafe_allowed": 0.047,
+        "safe_allowed": 0.588,
+        "safe_escalated": 0.399,
+        "safe_blocked": 0.014,
+        "unsafe_allowed_n": 2,
+        "safe_blocked_n": 2,
+        "escalated_n": 66,
+        "cost_per_1000_usd": 0.1795,
+        "mean_latency_ms": 1461.3
+      }
+    },
+    {
+      "name": "jev>judge-cheap>judge-strong",
+      "stages": [
+        {
+          "backend": "jev",
+          "allow_below": 0.065,
+          "block_above": 0.885
+        },
+        {
+          "backend": "judge-cheap",
+          "allow_below": 0.045,
+          "block_above": 0.375
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.539,
+        0.346
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.791,
+        "unsafe_escalated": 0.14,
+        "unsafe_allowed": 0.07,
+        "safe_allowed": 0.912,
+        "safe_escalated": 0.074,
+        "safe_blocked": 0.014,
+        "unsafe_allowed_n": 3,
+        "safe_blocked_n": 2,
+        "escalated_n": 17,
+        "cost_per_1000_usd": 3.3902,
+        "mean_latency_ms": 2641.3
+      }
+    },
+    {
+      "name": "rules>jev>judge-strong",
+      "stages": [
+        {
+          "backend": "rules",
+          "allow_below": 0.0,
+          "block_above": 0.825
+        },
+        {
+          "backend": "jev",
+          "allow_below": 0.065,
+          "block_above": 0.885
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.979,
+        0.529
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.767,
+        "unsafe_escalated": 0.163,
+        "unsafe_allowed": 0.07,
+        "safe_allowed": 0.905,
+        "safe_escalated": 0.081,
+        "safe_blocked": 0.014,
+        "unsafe_allowed_n": 3,
+        "safe_blocked_n": 2,
+        "escalated_n": 19,
+        "cost_per_1000_usd": 4.6941,
+        "mean_latency_ms": 2117.6
+      }
+    },
+    {
+      "name": "classifier>jev>judge-strong",
+      "stages": [
+        {
+          "backend": "classifier",
+          "allow_below": 0.015777915716171265,
+          "block_above": 0.5136943012475967
+        },
+        {
+          "backend": "jev",
+          "allow_below": 0.065,
+          "block_above": 0.885
+        },
+        {
+          "backend": "judge-strong",
+          "allow_below": 0.235,
+          "block_above": 0.71
+        }
+      ],
+      "share_reaching_each_stage": [
+        1.0,
+        0.513,
+        0.335
+      ],
+      "dev": {
+        "rows": 191,
+        "unsafe_blocked": 0.791,
+        "unsafe_escalated": 0.116,
+        "unsafe_allowed": 0.093,
+        "safe_allowed": 0.946,
+        "safe_escalated": 0.041,
+        "safe_blocked": 0.014,
+        "unsafe_allowed_n": 4,
+        "safe_blocked_n": 2,
+        "escalated_n": 11,
+        "cost_per_1000_usd": 2.8725,
+        "mean_latency_ms": 1345.2
+      }
     }
   ],
   "chosen": {

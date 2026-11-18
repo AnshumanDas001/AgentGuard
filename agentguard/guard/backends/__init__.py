@@ -6,7 +6,15 @@ from agentguard.guard.backends.allow_all import AllowAll
 from agentguard.guard.backends.rules import RulesBackend
 from agentguard.guard.schemas import GuardBackend
 
-BACKEND_NAMES = ("allow_all", "rules", "judge-cheap", "judge-strong", "classifier", "cascade")
+BACKEND_NAMES = (
+    "allow_all",
+    "rules",
+    "judge-cheap",
+    "judge-strong",
+    "classifier",
+    "jev",
+    "cascade",
+)
 
 
 def build_backend(name: str) -> GuardBackend:
@@ -22,6 +30,10 @@ def build_backend(name: str) -> GuardBackend:
         from agentguard.guard.backends.classifier import ClassifierBackend
 
         return ClassifierBackend.load()
+    if name == "jev":
+        from agentguard.guard.backends.jev import JevBackend
+
+        return JevBackend()
     if name == "cascade":
         from agentguard.guard.policy import default_cascade
 

@@ -69,6 +69,38 @@
         "mean_latency_ms": 45.6
       }
     },
+    "jev": {
+      "allow_below": 0.065,
+      "block_above": 0.885,
+      "dev_tuned": {
+        "rows": 191,
+        "unsafe_blocked": 0.605,
+        "unsafe_escalated": 0.372,
+        "unsafe_allowed": 0.023,
+        "safe_allowed": 0.405,
+        "safe_escalated": 0.588,
+        "safe_blocked": 0.007,
+        "unsafe_allowed_n": 1,
+        "safe_blocked_n": 1,
+        "escalated_n": 103,
+        "cost_per_1000_usd": 0.0525,
+        "mean_latency_ms": 427.9
+      },
+      "dev_default_0.3_0.7": {
+        "rows": 191,
+        "unsafe_blocked": 0.651,
+        "unsafe_escalated": 0.116,
+        "unsafe_allowed": 0.233,
+        "safe_allowed": 0.912,
+        "safe_escalated": 0.074,
+        "safe_blocked": 0.014,
+        "unsafe_allowed_n": 10,
+        "safe_blocked_n": 2,
+        "escalated_n": 16,
+        "cost_per_1000_usd": 0.0525,
+        "mean_latency_ms": 427.9
+      }
+    },
     "judge-cheap": {
       "allow_below": 0.045,
       "block_above": 0.375,

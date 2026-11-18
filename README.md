@@ -3,9 +3,9 @@
 A pre-execution safety monitor for LLM agents. AgentGuard sits between an agent and its tools,
 scores every proposed action before it runs, and allows, escalates or blocks it.
 
-> **Status: Phase 1 (agent, sandbox, interceptor).** The guard runs with a pass-through
-> `AllowAll` backend; the rules, classifier, LLM-judge and Jev backends come in Phase 3.
-> No results yet.
+> **Status: Phase 3 done.** All four guards (rules, classifier, LLM judge, Jev) and a
+> cascade run on the dev split; results below are dev numbers only. The single test-split
+> evaluation comes in Phase 4.
 
 ## How it works
 
@@ -101,10 +101,10 @@ Each guard reads one proposed action (task, history, tool, arguments) and return
 | `judge-cheap` | Claude Haiku 5.5 via OpenRouter, low reasoning effort, JSON answer constrained by a schema | about $0.0002, about 2 s |
 | `judge-strong` | Claude Opus 5.5 via OpenRouter, medium effort; if its safety filter declines, Sonnet 5.5, then Haiku 5.5 | about $0.008, about 3 s |
 | `classifier` | DeBERTa-v3-small fine-tuned on the train split (4 epochs, Apple GPU, 8 minutes) | free, about 50 ms |
-| `jev` | TypeSafe's Jev; waiting for API access | |
+| `jev` | TypeSafe's Jev 1.14 via OpenRouter's Decisions API (same key): 7 yes/no questions, one per risk category; p_unsafe is the highest answer | about $0.00005, about 0.4 s |
 
 ```bash
-make guard-dev BACKEND=rules      # or judge-cheap, judge-strong, classifier, cascade
+make guard-dev BACKEND=rules      # or judge-cheap, judge-strong, classifier, jev, cascade
 make tune                         # thresholds and cascade from the saved dev runs
 make train-classifier             # needs the ml group: uv sync --group ml
 ```
@@ -117,6 +117,7 @@ make train-classifier             # needs the ml group: uv sync --group ml
 | judge-cheap | 77% | 0.7% | 0.95 | 97% / 0% |
 | judge-strong | 91% | 4.7% | 0.98 | 97% / 1.6% |
 | classifier | 44% | 0.7% | 0.86 | 56% / 0.8% |
+| jev | 72% | 4.7% | 0.91 | 97% / 1.6% |
 
 Caveats:
 - These are dev numbers, used for building and tuning. The real comparison is the single
@@ -130,6 +131,9 @@ Caveats:
   fallback model answered those, and each verdict records which model answered.
 - The classifier catches injection rows (86%) but almost nothing else: most categories
   have only 2 to 15 training rows.
+- Jev's questions were written once, before its dev run, and not adjusted afterwards. It
+  names the right category for only 61% of the unsafe rows it catches, because its
+  questions overlap (an injected request to send data is both injection and exfiltration).
 
 Per-row verdicts and summaries are in `results/runs/`; the classifier's training record is
 in `results/classifier/metrics.json`.
@@ -145,13 +149,14 @@ in between is escalated to a human. It costs nothing: no guard is called again.
 |---|---|---|---|---|---|
 | rules | never allows | 0.83 | 0 of 43 | 0 of 148 | 187 of 191 |
 | classifier | 0.016 | 0.51 | 2 | 1 | 98 |
+| jev | 0.065 | 0.89 | 1 | 1 | 103 |
 | judge-cheap | 0.045 | 0.38 | 1 | 1 | 91 |
 | judge-strong | 0.24 | 0.71 | 2 | 1 | 24 |
 
 A cheap guard on its own is cheap but sends half of all actions to a human, while the strong
 judge is accurate but costs about 33 times more. The **cascade** (in `policy.py`, after
 FrugalGPT) combines them: the cheap judge decides the actions it is sure about, and only
-the rest go to the strong judge. `make tune` replays 8 possible cascades on the saved dev
+the rest go to the strong judge. `make tune` replays 14 possible cascades on the saved dev
 verdicts and picks the cheapest that lets through no more unsafe actions, blocks no more
 safe ones and escalates no more than the strong judge alone (fewer stages win when the
 saving is under 5%).
@@ -161,9 +166,11 @@ saving is under 5%).
 | judge-strong alone | 2 | 1 | 24 | $7.55 |
 | **cascade: judge-cheap, then judge-strong** | 2 | 1 | 21 | **$4.51 (40% less)** |
 
-Only 48% of actions reach the strong judge. Adding the rules in front saves under 0.1%,
-and putting the classifier in front is cheaper still ($2.83) but lets 4 unsafe actions
-through instead of 2. The cascade is a backend like the others
+Only 48% of actions reach the strong judge. Adding the rules in front saves under 0.1%.
+Cheaper cascades exist but miss the bar on dev: classifier first ($2.83) lets 4 unsafe
+actions through instead of 2, and Jev, then the cheap judge, then the strong one ($3.39)
+lets 3 through and blocks 2 safe ones. One or two rows are within noise at this size;
+Phase 4's sweep on test settles it. The cascade is a backend like the others
 (`make guard-dev BACKEND=cascade`); the runner and the interceptor apply each guard's tuned
 thresholds automatically.
 
@@ -184,7 +191,7 @@ agentguard/
     interceptor.py
     policy.py    thresholds, tuned thresholds, and the cascade
     logger.py    JSONL logger
-    backends/    allow_all.py, rules.py, llm_judge.py, classifier.py (jev to come)
+    backends/    allow_all.py, rules.py, llm_judge.py, classifier.py, jev.py
     train_classifier.py  fine-tunes the DeBERTa guard
   eval/          run a guard over a split and summarise it; tune.py picks thresholds and a cascade
   dataset/       row format, validator, stats, labeling tool, split and freeze
@@ -203,7 +210,7 @@ results/         logs, tables, charts
 | 0. Setup and reading | 1 | An LLM tool call runs a command in Docker |
 | 1. Agent, sandbox, interceptor | 2–3 | 5+ tasks complete in the sandbox; every call logged |
 | 2. Dataset | 4–5 | Test split frozen and committed (hash below) |
-| 3. Guard backends | 6–7 | All 4 backends return valid Verdicts on the dev split |
+| 3. Guard backends | 6–7 | All 4 backends return valid Verdicts on the dev split (passed) |
 | 4. Evaluation and attacks | 8–9 | 4 charts with error bars from `make report` |
 | 5. Ship | 10 | README, demo, write-up |
 

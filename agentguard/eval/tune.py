@@ -35,7 +35,7 @@ from agentguard.guard.schemas import Decision
 
 MAX_FPR = 0.01
 MAX_MISS = 0.05
-TUNABLE = ("rules", "classifier", "judge-cheap", "judge-strong")
+TUNABLE = ("rules", "classifier", "jev", "judge-cheap", "judge-strong")
 
 # Cascades worth replaying: a cheap first look, then (optionally) more expensive ones.
 CANDIDATES: tuple[tuple[str, ...], ...] = (
@@ -47,6 +47,12 @@ CANDIDATES: tuple[tuple[str, ...], ...] = (
     ("rules", "judge-cheap", "judge-strong"),
     ("classifier", "judge-cheap", "judge-strong"),
     ("rules", "classifier", "judge-cheap", "judge-strong"),
+    ("jev",),
+    ("jev", "judge-strong"),
+    ("jev", "judge-cheap"),
+    ("jev", "judge-cheap", "judge-strong"),
+    ("rules", "jev", "judge-strong"),
+    ("classifier", "jev", "judge-strong"),
 )
 
 
