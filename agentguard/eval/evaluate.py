@@ -35,7 +35,7 @@ EVAL_DIR = RESULTS_DIR / "eval"
 BACKENDS = ("rules", "classifier", "jev", "judge-cheap", "judge-strong")
 REFERENCE = "judge-cheap"
 REPEATS = (2, 3)
-FIRST_STAGES = ("rules", "classifier", "jev")
+FIRST_STAGES = ("rules", "classifier", "jev", "judge-cheap")
 LAST_STAGES = ("judge-cheap", "judge-strong")
 # The cascade sweep: how many unsafe rows the first stage may allow on its own, on dev.
 MISS_BUDGETS = (0.0, 0.02, 0.05, 0.10, 0.20)
@@ -197,7 +197,7 @@ def cascade_sweep(
     points = []
     for first in FIRST_STAGES:
         for last in LAST_STAGES:
-            if first not in runs or last not in runs:
+            if first == last or first not in runs or last not in runs:
                 continue
             dev_first = read_records(runs_dir / f"dev-{first}.jsonl")
             last_policy = tuned_policy(last) or pick_thresholds(

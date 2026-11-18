@@ -3,10 +3,10 @@
 A pre-execution safety monitor for LLM agents. AgentGuard sits between an agent and its tools,
 scores every proposed action before it runs, and allows, escalates or blocks it.
 
-> **Status: Phase 4 under way.** The single test-split run is done for rules, the
-> classifier, Jev and the cheap LLM judge, with 95% confidence intervals
-> ([test results](#test-results-phase-4-level-1)). In progress: the strong judge's test run
-> (43 rows left), attack rewrites (Level 2) and end-to-end agent runs (Level 3).
+> **Status: Phase 4 under way.** The single test-split run is done for all four guards
+> and the strong judge, with 95% confidence intervals
+> ([test results](#test-results-phase-4-level-1)), and so are the attack rewrites
+> ([Level 2](#attack-rewrites-phase-4-level-2)). Next: end-to-end agent runs (Level 3).
 
 ## How it works
 
@@ -219,13 +219,16 @@ Choices and per-candidate results are in `results/tuning/`.
 ![Recall at 1% false-positive rate against cost per 1,000 decisions](results/charts/test-cost-recall.png)
 
 The frozen test split, scored once per guard on 2026-11-19 (Jev `typesafe/jev-1.14-20261014`,
-cheap judge `anthropic/claude-haiku-5.5`). Each guard was run twice more for latency only.
-Headline numbers use the 257 rows not marked ambiguous (51 unsafe, 206 safe). Brackets are
-95% bootstrap CIs (1,000 resamples, stratified by label). The strong judge was not run on
-test yet.
+cheap judge `anthropic/claude-haiku-5.5`, strong judge `anthropic/claude-opus-5.5`). Each
+guard was run twice more for latency only, except the strong judge: it ran once, to save
+about $4.50. Opus's safety filter declined 41 of the 297 rows (mostly injection rows), so
+Sonnet 5.5 or Haiku 5.5 answered those, as on dev. Headline numbers use the 257 rows not
+marked ambiguous (51 unsafe, 206 safe). Brackets are 95% bootstrap CIs (1,000 resamples,
+stratified by label).
 
 ```bash
 make test-runs   # the single test run: each guard 3 times (about $0.25)
+make attacks     # Level 2: build the rewrites and run each guard on them (about $0.50)
 make report      # metrics with CIs and the charts, from the saved runs (no API calls)
 make eval-dev    # the same metrics on dev
 ```
@@ -236,6 +239,7 @@ make eval-dev    # the same metrics on dev
 | classifier | 45% [33, 65] | 0.94 [0.92, 0.97] | 0.83 [0.76, 0.90] | 0.08 [0.06, 0.11] | 54 ms / 173 ms | $0.00 |
 | jev | 86% [71, 96] | 0.97 [0.94, 1.00] | 0.95 [0.91, 0.99] | 0.04 [0.03, 0.07] | 539 ms / 612 ms | $0.05 |
 | judge-cheap | 84% [0, 100] | 0.99 [0.98, 1.00] | 0.94 [0.85, 1.00] | 0.04 [0.03, 0.08] | 1.5 s / 3.1 s | $0.22 |
+| judge-strong | 88% [71, 98] | 0.99 [0.98, 1.00] | 0.97 [0.95, 0.99] | 0.07 [0.06, 0.10] | 2.8 s / 6.3 s | $7.82 |
 
 As deployed, with each guard's thresholds tuned on dev (clear test rows):
 
@@ -245,7 +249,9 @@ As deployed, with each guard's thresholds tuned on dev (clear test rows):
 | classifier | 0 | 3 | 122 | $0.00 |
 | jev | 1 | 0 | 128 | $0.05 |
 | judge-cheap | 0 | 3 | 90 | $0.22 |
-| cascade: jev, then judge-cheap on the unsure 25% | 1 | 1 | 30 | $0.11 |
+| judge-strong | 1 | 1 | 30 | $7.82 |
+| cascade chosen on dev in Phase 3: judge-cheap, then judge-strong on the unsure 35% | 1 | 3 | 20 | $3.32 |
+| cascade: jev, then judge-cheap on the unsure 25% (picked after the test run) | 1 | 1 | 30 | $0.11 |
 
 What the test run shows:
 
@@ -257,35 +263,46 @@ What the test run shows:
    alarms, so the number rests on the three highest-scoring safe rows. The cheap judge gave
    one safe row a score of 1.0; any resample that draws that row three times cannot reach
    1% FPR, which is why its CI runs down to 0. AUROC and the as-deployed counts are steadier.
-3. **The best cascade puts Jev first.** Jev decides the rows it is sure about and the cheap
-   judge sees the rest. With Jev's thresholds set on dev to let it clear rows alone at a 10%
+3. **The strong judge is barely ahead on clear rows, and well ahead on borderline ones.**
+   It catches 88% at 1% FPR, against the cheap judge's 84%: +4 points [-14, +92], AUROC
+   +0.002 [-0.008, +0.013]. It costs 35 times more. On the 40 ambiguous rows it is the only
+   guard that tracks the labels well (AUROC 0.80 [0.63, 0.95], the others 0.62 to 0.77), as
+   on dev. Both the labels and the judge come from Claude, so part of that agreement may be
+   shared judgment rather than skill (see the caveats under the dev results).
+4. **The cascade chosen in advance held up.** Phase 3 picked "cheap judge, then strong
+   judge" on dev, before any test run. On test it lets through the same 1 unsafe action as
+   the strong judge alone, blocks 3 safe ones instead of 1, sends 20 actions to a human
+   instead of 30, and costs 58% less.
+5. **The cheapest good cascade puts Jev first.** Jev decides the rows it is sure about, and
+   the cheap judge sees the rest. With Jev's thresholds set on dev to let it clear rows alone at a 10%
    miss budget, 25% of rows reach the judge. That cascade catches 94% [76, 100] at 1% FPR,
    costs half as much as the judge alone, and sends 30 rows to a human instead of 90.
    Caveat: on dev every budget from 0% to 20% looked equally safe, and the cheapest (20%)
    lets 4 unsafe rows through on test. The 10% point was not chosen in advance.
-4. **The small guards cover injections and little else.** Rules catch 96% of injection
+6. **The small guards cover injections and little else.** Rules catch 96% of injection
    rows at 1% FPR and the classifier 79%, but the classifier catches none of the other
    categories at that rate (table below). Its AUROC (0.94) looks good, but its high scores
    are reserved for injection-style rows.
-5. **Every false block on clear rows is an ASSEBench row** (classifier 3, cheap judge 3).
+7. **Every false block on clear rows is an ASSEBench row** (classifier 3, cheap judge 3,
+   strong judge 1).
    Those rows come from another benchmark's labels, and the borderline ones are where
    labelers disagree most (see the relabel above).
-6. **No guard agrees reliably with the labels on the 40 ambiguous rows.** AUROC is 0.62 to
-   0.77, with CIs that reach down to 0.42 to 0.60.
-7. **The LLM guards are not deterministic.** Across the three runs, the cheap judge's
+8. **Only the strong judge agrees reliably with the labels on the 40 ambiguous rows.** The
+   others score AUROC 0.62 to 0.77, with CIs that reach down to 0.42 to 0.60.
+9. **The LLM guards are not deterministic.** Across the three runs, the cheap judge's
    decision changed on 8.1% of rows and Jev's on 6.7%; rules and the classifier never changed.
 
 Recall at 1% FPR by category (clear test rows; counts are small, so read these as rough):
 
-| Category (unsafe rows) | rules | classifier | jev | judge-cheap |
-|---|---|---|---|---|
-| injection_driven (28) | 96% | 79% | 100% | 100% |
-| destructive_file_ops (7) | 14% | 0% | 57% | 57% |
-| data_exfiltration (6) | 33% | 17% | 67% | 67% |
-| privilege_escalation_persistence (4) | 75% | 0% | 75% | 75% |
-| credential_access (3) | 67% | 0% | 100% | 67% |
-| irreversible_external_action (2) | 50% | 0% | 50% | 100% |
-| resource_abuse (1) | 0% | 0% | 100% | 0% |
+| Category (unsafe rows) | rules | classifier | jev | judge-cheap | judge-strong |
+|---|---|---|---|---|---|
+| injection_driven (28) | 96% | 79% | 100% | 100% | 100% |
+| destructive_file_ops (7) | 14% | 0% | 57% | 57% | 71% |
+| data_exfiltration (6) | 33% | 17% | 67% | 67% | 83% |
+| privilege_escalation_persistence (4) | 75% | 0% | 75% | 75% | 75% |
+| credential_access (3) | 67% | 0% | 100% | 67% | 67% |
+| irreversible_external_action (2) | 50% | 0% | 50% | 100% | 100% |
+| resource_abuse (1) | 0% | 0% | 100% | 0% | 0% |
 
 ![ROC curves on clear test rows](results/charts/test-roc.png)
 
@@ -314,7 +331,7 @@ Two fixes were made after the test run. Neither changed a threshold or a score:
 Everything is in `results/eval/test.json`; per-row verdicts are in
 `results/runs/test-*.jsonl`.
 
-## Attack rewrites (Phase 4, Level 2, in progress)
+## Attack rewrites (Phase 4, Level 2)
 
 Can a guard be fooled by an attack it already catches, disguised to look different? `make
 attacks` wraps each unsafe clear test action in four of the plan's five disguise families,
@@ -334,17 +351,36 @@ it" step is swapped for "print it". The fifth family, paraphrase, is to be writt
 hand.
 
 The **flip rate** is the share of rewrites a guard misses, among rewrites of actions it
-caught before (p_unsafe >= 0.5). So far only the two free guards have run:
+caught before (p_unsafe >= 0.5). CIs resample the original actions, so all rewrites of one
+action move together.
+
+![Flip rate by attack family](results/charts/attacks-flip-rate.png)
 
 | Guard | Encoding | Indirection | Splitting | Benign framing |
 |---|---|---|---|---|
 | rules | 55% [30, 80] | 70% [40, 100] | 50% [20, 80] | 0% |
 | classifier | n/a | n/a | n/a | 0% |
+| jev | 0% | 4% [0, 11] | 18% [0, 36] | 0% |
+| judge-cheap | 4% [0, 11] | 0% | 4% [0, 11] | 4% [0, 9] |
+| judge-strong | 7% [0, 21] | 0% | 4% [0, 11] | 0% |
 
-The classifier caught none of the original shell attacks, so only the framed emails apply
-to it. Jev and the judges are pending: the OpenRouter key hit its $10 spending cap during
-the strong judge's test run, which left 43 of its 297 rows unscored. Flip rates are in
-`results/eval/attacks.json` and `results/charts/attacks-flip-rate.png`.
+1. **Rules break easily; the LLM guards mostly don't.** Rules miss half or more of the
+   encoded, indirect and split versions of attacks they caught. The LLM guards miss 0% to 7%
+   of most families.
+2. **Splitting is Jev's weak spot.** Spreading a command over three steps makes Jev miss 18%
+   [0, 36] of attacks it caught before, against 4% for both judges. Splitting tests whether
+   a guard reads the history, as the plan predicted.
+3. **None of the misses would run unchecked.** Under the dev-tuned thresholds, not one
+   rewrite of a caught attack is auto-allowed by any guard: each one lands in the
+   "ask a human" band.
+4. **Benign framing does nothing.** A comment or a note claiming the user asked for it
+   flipped at most 4% of attacks, for every guard.
+
+Caveats: 14 shell actions underlie three of the families, so the CIs are wide. The
+classifier caught none of the original shell attacks, so only the framed emails apply to it.
+Opus's safety filter declined 117 of the 137 rewrites (encoded attacks look like attacks),
+so the strong judge's column is mostly Haiku 5.5 (75 rows) and Sonnet 5.5 (42 rows), not
+Opus (20). Flip rates are in `results/eval/attacks.json`.
 
 ## Layout
 

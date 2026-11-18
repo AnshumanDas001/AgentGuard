@@ -123,8 +123,12 @@ def roc_chart(result: dict[str, Any], out: Path) -> None:
 
 
 def cost_recall_chart(result: dict[str, Any], out: Path) -> None:
-    fig, ax = plt.subplots(figsize=(9, 5.4))
-    for name, marker in (("classifier>judge-cheap", "s"), ("jev>judge-cheap", "o")):
+    fig, ax = plt.subplots(figsize=(11.5, 5.4))
+    for name, marker in (
+        ("classifier>judge-cheap", "s"),
+        ("jev>judge-cheap", "o"),
+        ("judge-cheap>judge-strong", "D"),
+    ):
         pts = [p for p in result["cascade_sweep"] if p["name"] == name]
         if not pts:
             continue
@@ -143,8 +147,9 @@ def cost_recall_chart(result: dict[str, Any], out: Path) -> None:
                 markeredgecolor=SURFACE, markeredgewidth=2, zorder=4,
                 label=LABELS.get(b, b))  # fmt: skip
         left = b in ("rules", "jev")  # a neighbouring CI bar or cascade sits to the right
+        dy = -14 if b == "judge-cheap" else 4  # below its cascade line
         ax.annotate(f"{LABELS.get(b, b)}  {r['value']:.0%}", (x, r["value"]),
-                    textcoords="offset points", xytext=(-9 if left else 9, 4),
+                    textcoords="offset points", xytext=(-9 if left else 9, dy),
                     ha="right" if left else "left", fontsize=9, color=TEXT)  # fmt: skip
     ax.set_xscale("log")
     ax.set_xlim(FREE_X / 6, 60)
@@ -161,7 +166,7 @@ def cost_recall_chart(result: dict[str, Any], out: Path) -> None:
     ax.set(xlabel="Cost per 1,000 decisions (USD, log scale)",
            ylabel="Recall at 1% false-positive rate")  # fmt: skip
     ax.set_title("What each guard catches at 1% false alarms, against what it costs")
-    ax.legend(loc="lower right")
+    ax.legend(loc="center left", bbox_to_anchor=(1.01, 0.5))
     subtitle(
         fig,
         f"{result['split']} split, clear rows. Bars: 95% bootstrap CI. Gray cascade points: the "
@@ -232,10 +237,10 @@ def flip_chart(attacks: dict[str, Any], out: Path) -> None:
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0%}"))
     ax.set_ylabel("Flip rate (caught before, missed after)")
     ax.grid(axis="x", visible=False)
-    ax.set_title("How often a rewrite of a caught attack slips past each guard")
+    ax.set_title("How often a rewrite of a caught attack slips past each guard", pad=26)
     for b in backends:  # every backend in the legend, even one with no bars
         ax.bar(0, 0, width=0, color=COLORS[b], label=LABELS[b])
-    ax.legend(loc="upper right", ncols=min(len(backends), 3))
+    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncols=len(backends), fontsize=8)
     subtitle(
         fig,
         f"{attacks['rewrites']} rewrites of unsafe clear test actions, each machine-checked to "

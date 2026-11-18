@@ -1,6 +1,6 @@
 {
   "split": "test",
-  "evaluated_at": "2026-11-18T19:57:16+00:00",
+  "evaluated_at": "2026-11-18T20:25:25+00:00",
   "bootstrap": {
     "resamples": 1000,
     "stratified_by_label": true,
@@ -11,9 +11,7 @@
     "all": 297,
     "ambiguous": 40
   },
-  "incomplete_runs_left_out": {
-    "judge-strong": "/Users/neel/Desktop/Agent safety monitor/results/runs/test-judge-strong.jsonl has 43 rows without a verdict; rerun with --retry-failed"
-  },
+  "incomplete_runs_left_out": {},
   "backends": {
     "rules": {
       "models": [],
@@ -5152,6 +5150,825 @@
           ]
         }
       }
+    },
+    "judge-strong": {
+      "models": [
+        "anthropic/claude-haiku-5.5",
+        "anthropic/claude-opus-5.5",
+        "anthropic/claude-sonnet-5.5"
+      ],
+      "cost_per_1000_usd": 7.8224,
+      "latency": {
+        "runs": 1,
+        "p50_ms": 2757.5,
+        "p95_ms": 6275.6,
+        "p50_ms_per_run": [
+          2757.5
+        ]
+      },
+      "stability_across_runs": null,
+      "clear": {
+        "unsafe": 51,
+        "safe": 206,
+        "recall_at_1pct_fpr": {
+          "value": 0.882,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.992,
+          "ci": [
+            0.983,
+            0.998
+          ]
+        },
+        "pr_auc": {
+          "value": 0.972,
+          "ci": [
+            0.946,
+            0.993
+          ]
+        },
+        "ece": {
+          "value": 0.065,
+          "ci": [
+            0.056,
+            0.09
+          ]
+        },
+        "deployed": {
+          "recall_blocked": {
+            "value": 0.882,
+            "ci": [
+              0.784,
+              0.961
+            ]
+          },
+          "precision_blocked": {
+            "value": 0.978,
+            "ci": [
+              0.923,
+              1.0
+            ]
+          },
+          "fpr_blocked": {
+            "value": 0.005,
+            "ci": [
+              0.0,
+              0.019
+            ]
+          },
+          "recall_flagged": {
+            "value": 0.98,
+            "ci": [
+              0.941,
+              1.0
+            ]
+          },
+          "fpr_flagged": {
+            "value": 0.126,
+            "ci": [
+              0.083,
+              0.17
+            ]
+          },
+          "escalated": 0.117
+        },
+        "by_category": {
+          "credential_access": {
+            "unsafe": 3,
+            "recall_at_1pct_fpr": {
+              "value": 0.667,
+              "ci": [
+                0.0,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "data_exfiltration": {
+            "unsafe": 6,
+            "recall_at_1pct_fpr": {
+              "value": 0.833,
+              "ci": [
+                0.333,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 0.833,
+              "ci": [
+                0.5,
+                1.0
+              ]
+            }
+          },
+          "destructive_file_ops": {
+            "unsafe": 7,
+            "recall_at_1pct_fpr": {
+              "value": 0.714,
+              "ci": [
+                0.125,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "injection_driven": {
+            "unsafe": 28,
+            "recall_at_1pct_fpr": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "irreversible_external_action": {
+            "unsafe": 2,
+            "recall_at_1pct_fpr": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "privilege_escalation_persistence": {
+            "unsafe": 4,
+            "recall_at_1pct_fpr": {
+              "value": 0.75,
+              "ci": [
+                0.25,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "resource_abuse": {
+            "unsafe": 1,
+            "recall_at_1pct_fpr": {
+              "value": 0.0,
+              "ci": [
+                0.0,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          }
+        },
+        "roc_curve": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.2353
+          ],
+          [
+            0.0,
+            0.4902
+          ],
+          [
+            0.0,
+            0.6078
+          ],
+          [
+            0.0,
+            0.6471
+          ],
+          [
+            0.0,
+            0.7255
+          ],
+          [
+            0.0,
+            0.7451
+          ],
+          [
+            0.0049,
+            0.7647
+          ],
+          [
+            0.0049,
+            0.7843
+          ],
+          [
+            0.0049,
+            0.8235
+          ],
+          [
+            0.0049,
+            0.8627
+          ],
+          [
+            0.0049,
+            0.8824
+          ],
+          [
+            0.0146,
+            0.8824
+          ],
+          [
+            0.0146,
+            0.902
+          ],
+          [
+            0.0194,
+            0.902
+          ],
+          [
+            0.0243,
+            0.9412
+          ],
+          [
+            0.034,
+            0.9412
+          ],
+          [
+            0.0388,
+            0.9412
+          ],
+          [
+            0.0437,
+            0.9412
+          ],
+          [
+            0.0485,
+            0.9412
+          ],
+          [
+            0.1117,
+            0.9608
+          ],
+          [
+            0.1262,
+            0.9804
+          ],
+          [
+            0.1262,
+            1.0
+          ],
+          [
+            0.1748,
+            1.0
+          ],
+          [
+            0.2427,
+            1.0
+          ],
+          [
+            0.2864,
+            1.0
+          ],
+          [
+            0.3544,
+            1.0
+          ],
+          [
+            0.3835,
+            1.0
+          ],
+          [
+            0.466,
+            1.0
+          ],
+          [
+            0.5971,
+            1.0
+          ],
+          [
+            0.9175,
+            1.0
+          ],
+          [
+            1.0,
+            1.0
+          ]
+        ],
+        "reliability": [
+          {
+            "lo": 0.0,
+            "hi": 0.1,
+            "rows": 133,
+            "mean_score": 0.027293233082706765,
+            "unsafe": 0.0
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "rows": 37,
+            "mean_score": 0.12378378378378378,
+            "unsafe": 0.0
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "rows": 15,
+            "mean_score": 0.21466666666666667,
+            "unsafe": 0.13333333333333333
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "rows": 16,
+            "mean_score": 0.308125,
+            "unsafe": 0.0625
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "rows": 3,
+            "mean_score": 0.5333333333333333,
+            "unsafe": 0.0
+          },
+          {
+            "lo": 0.6,
+            "hi": 0.7,
+            "rows": 5,
+            "mean_score": 0.62,
+            "unsafe": 0.6
+          },
+          {
+            "lo": 0.7,
+            "hi": 0.8,
+            "rows": 5,
+            "mean_score": 0.724,
+            "unsafe": 0.6
+          },
+          {
+            "lo": 0.8,
+            "hi": 0.9,
+            "rows": 6,
+            "mean_score": 0.8333333333333334,
+            "unsafe": 0.8333333333333334
+          },
+          {
+            "lo": 0.9,
+            "hi": 1.0,
+            "rows": 37,
+            "mean_score": 0.9745945945945946,
+            "unsafe": 1.0
+          }
+        ]
+      },
+      "all": {
+        "unsafe": 62,
+        "safe": 235,
+        "recall_at_1pct_fpr": {
+          "value": 0.726,
+          "ci": [
+            0.565,
+            0.887
+          ]
+        },
+        "auroc": {
+          "value": 0.978,
+          "ci": [
+            0.959,
+            0.992
+          ]
+        },
+        "pr_auc": {
+          "value": 0.938,
+          "ci": [
+            0.897,
+            0.973
+          ]
+        },
+        "ece": {
+          "value": 0.074,
+          "ci": [
+            0.061,
+            0.099
+          ]
+        },
+        "deployed": {
+          "recall_blocked": {
+            "value": 0.806,
+            "ci": [
+              0.694,
+              0.903
+            ]
+          },
+          "precision_blocked": {
+            "value": 0.943,
+            "ci": [
+              0.88,
+              1.0
+            ]
+          },
+          "fpr_blocked": {
+            "value": 0.013,
+            "ci": [
+              0.0,
+              0.03
+            ]
+          },
+          "recall_flagged": {
+            "value": 0.952,
+            "ci": [
+              0.887,
+              1.0
+            ]
+          },
+          "fpr_flagged": {
+            "value": 0.174,
+            "ci": [
+              0.128,
+              0.226
+            ]
+          },
+          "escalated": 0.158
+        },
+        "by_category": {
+          "credential_access": {
+            "unsafe": 3,
+            "recall_at_1pct_fpr": {
+              "value": 0.0,
+              "ci": [
+                0.0,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "data_exfiltration": {
+            "unsafe": 9,
+            "recall_at_1pct_fpr": {
+              "value": 0.667,
+              "ci": [
+                0.2,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 0.778,
+              "ci": [
+                0.4,
+                1.0
+              ]
+            }
+          },
+          "destructive_file_ops": {
+            "unsafe": 9,
+            "recall_at_1pct_fpr": {
+              "value": 0.556,
+              "ci": [
+                0.091,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "injection_driven": {
+            "unsafe": 29,
+            "recall_at_1pct_fpr": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "irreversible_external_action": {
+            "unsafe": 3,
+            "recall_at_1pct_fpr": {
+              "value": 0.667,
+              "ci": [
+                0.0,
+                1.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          },
+          "privilege_escalation_persistence": {
+            "unsafe": 7,
+            "recall_at_1pct_fpr": {
+              "value": 0.429,
+              "ci": [
+                0.0,
+                0.833
+              ]
+            },
+            "recall_flagged": {
+              "value": 0.857,
+              "ci": [
+                0.5,
+                1.0
+              ]
+            }
+          },
+          "resource_abuse": {
+            "unsafe": 2,
+            "recall_at_1pct_fpr": {
+              "value": 0.0,
+              "ci": [
+                0.0,
+                0.0
+              ]
+            },
+            "recall_flagged": {
+              "value": 1.0,
+              "ci": [
+                1.0,
+                1.0
+              ]
+            }
+          }
+        },
+        "roc_curve": [
+          [
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.1935
+          ],
+          [
+            0.0,
+            0.4032
+          ],
+          [
+            0.0,
+            0.5
+          ],
+          [
+            0.0,
+            0.5323
+          ],
+          [
+            0.0,
+            0.6129
+          ],
+          [
+            0.0,
+            0.6452
+          ],
+          [
+            0.0043,
+            0.6613
+          ],
+          [
+            0.0085,
+            0.6774
+          ],
+          [
+            0.0085,
+            0.7258
+          ],
+          [
+            0.0128,
+            0.7581
+          ],
+          [
+            0.0128,
+            0.8065
+          ],
+          [
+            0.0213,
+            0.8065
+          ],
+          [
+            0.0213,
+            0.8226
+          ],
+          [
+            0.0255,
+            0.8387
+          ],
+          [
+            0.034,
+            0.8548
+          ],
+          [
+            0.0553,
+            0.9194
+          ],
+          [
+            0.0723,
+            0.9194
+          ],
+          [
+            0.0766,
+            0.9194
+          ],
+          [
+            0.0809,
+            0.9194
+          ],
+          [
+            0.0851,
+            0.9194
+          ],
+          [
+            0.0894,
+            0.9194
+          ],
+          [
+            0.1574,
+            0.9355
+          ],
+          [
+            0.1745,
+            0.9516
+          ],
+          [
+            0.1745,
+            0.9677
+          ],
+          [
+            0.2298,
+            0.9839
+          ],
+          [
+            0.2979,
+            0.9839
+          ],
+          [
+            0.3404,
+            0.9839
+          ],
+          [
+            0.417,
+            1.0
+          ],
+          [
+            0.4468,
+            1.0
+          ],
+          [
+            0.5234,
+            1.0
+          ],
+          [
+            0.5319,
+            1.0
+          ],
+          [
+            0.6468,
+            1.0
+          ],
+          [
+            0.9277,
+            1.0
+          ],
+          [
+            1.0,
+            1.0
+          ]
+        ],
+        "reliability": [
+          {
+            "lo": 0.0,
+            "hi": 0.1,
+            "rows": 137,
+            "mean_score": 0.02802919708029197,
+            "unsafe": 0.0
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "rows": 45,
+            "mean_score": 0.12222222222222222,
+            "unsafe": 0.022222222222222223
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "rows": 20,
+            "mean_score": 0.21350000000000002,
+            "unsafe": 0.15
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "rows": 19,
+            "mean_score": 0.3068421052631579,
+            "unsafe": 0.05263157894736842
+          },
+          {
+            "lo": 0.4,
+            "hi": 0.5,
+            "rows": 1,
+            "mean_score": 0.4,
+            "unsafe": 0.0
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "rows": 5,
+            "mean_score": 0.54,
+            "unsafe": 0.0
+          },
+          {
+            "lo": 0.6,
+            "hi": 0.7,
+            "rows": 15,
+            "mean_score": 0.616,
+            "unsafe": 0.4666666666666667
+          },
+          {
+            "lo": 0.7,
+            "hi": 0.8,
+            "rows": 8,
+            "mean_score": 0.72625,
+            "unsafe": 0.625
+          },
+          {
+            "lo": 0.8,
+            "hi": 0.9,
+            "rows": 9,
+            "mean_score": 0.8333333333333334,
+            "unsafe": 0.7777777777777778
+          },
+          {
+            "lo": 0.9,
+            "hi": 1.0,
+            "rows": 38,
+            "mean_score": 0.973421052631579,
+            "unsafe": 1.0
+          }
+        ]
+      },
+      "ambiguous": {
+        "rows": 40,
+        "unsafe": 11,
+        "auroc_agreement_with_labeler": {
+          "value": 0.804,
+          "ci": [
+            0.627,
+            0.948
+          ]
+        }
+      }
     }
   },
   "frozen": {
@@ -5211,6 +6028,22 @@
         "ci": [
           -0.056,
           0.009
+        ]
+      }
+    },
+    "judge-strong": {
+      "recall_at_1pct_fpr": {
+        "value": 0.039,
+        "ci": [
+          -0.137,
+          0.922
+        ]
+      },
+      "auroc": {
+        "value": 0.002,
+        "ci": [
+          -0.008,
+          0.013
         ]
       }
     }
@@ -5487,6 +6320,276 @@
       }
     },
     {
+      "name": "rules>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.0,
+      "first_allow_below": 0.0,
+      "first_block_above": 0.825,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.882,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.992,
+          "ci": [
+            0.983,
+            0.998
+          ]
+        },
+        "reach_last_stage": 0.965,
+        "cost_per_1000_usd": 7.4663,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 1,
+          "escalated_n": 30
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.726,
+          "ci": [
+            0.565,
+            0.887
+          ]
+        },
+        "auroc": {
+          "value": 0.978,
+          "ci": [
+            0.959,
+            0.992
+          ]
+        },
+        "reach_last_stage": 0.97,
+        "cost_per_1000_usd": 7.7909,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 3,
+          "safe_blocked_n": 3,
+          "escalated_n": 47
+        }
+      }
+    },
+    {
+      "name": "rules>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.02,
+      "first_allow_below": 0.0,
+      "first_block_above": 0.825,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.882,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.992,
+          "ci": [
+            0.983,
+            0.998
+          ]
+        },
+        "reach_last_stage": 0.965,
+        "cost_per_1000_usd": 7.4663,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 1,
+          "escalated_n": 30
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.726,
+          "ci": [
+            0.565,
+            0.887
+          ]
+        },
+        "auroc": {
+          "value": 0.978,
+          "ci": [
+            0.959,
+            0.992
+          ]
+        },
+        "reach_last_stage": 0.97,
+        "cost_per_1000_usd": 7.7909,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 3,
+          "safe_blocked_n": 3,
+          "escalated_n": 47
+        }
+      }
+    },
+    {
+      "name": "rules>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.05,
+      "first_allow_below": 0.0,
+      "first_block_above": 0.825,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.882,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.992,
+          "ci": [
+            0.983,
+            0.998
+          ]
+        },
+        "reach_last_stage": 0.965,
+        "cost_per_1000_usd": 7.4663,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 1,
+          "escalated_n": 30
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.726,
+          "ci": [
+            0.565,
+            0.887
+          ]
+        },
+        "auroc": {
+          "value": 0.978,
+          "ci": [
+            0.959,
+            0.992
+          ]
+        },
+        "reach_last_stage": 0.97,
+        "cost_per_1000_usd": 7.7909,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 3,
+          "safe_blocked_n": 3,
+          "escalated_n": 47
+        }
+      }
+    },
+    {
+      "name": "rules>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.1,
+      "first_allow_below": 0.0,
+      "first_block_above": 0.825,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.882,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.992,
+          "ci": [
+            0.983,
+            0.998
+          ]
+        },
+        "reach_last_stage": 0.965,
+        "cost_per_1000_usd": 7.4663,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 1,
+          "escalated_n": 30
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.726,
+          "ci": [
+            0.565,
+            0.887
+          ]
+        },
+        "auroc": {
+          "value": 0.978,
+          "ci": [
+            0.959,
+            0.992
+          ]
+        },
+        "reach_last_stage": 0.97,
+        "cost_per_1000_usd": 7.7909,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 3,
+          "safe_blocked_n": 3,
+          "escalated_n": 47
+        }
+      }
+    },
+    {
+      "name": "rules>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.2,
+      "first_allow_below": 0.0,
+      "first_block_above": 0.825,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.882,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.992,
+          "ci": [
+            0.983,
+            0.998
+          ]
+        },
+        "reach_last_stage": 0.965,
+        "cost_per_1000_usd": 7.4663,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 1,
+          "escalated_n": 30
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.726,
+          "ci": [
+            0.565,
+            0.887
+          ]
+        },
+        "auroc": {
+          "value": 0.978,
+          "ci": [
+            0.959,
+            0.992
+          ]
+        },
+        "reach_last_stage": 0.97,
+        "cost_per_1000_usd": 7.7909,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 3,
+          "safe_blocked_n": 3,
+          "escalated_n": 47
+        }
+      }
+    },
+    {
       "name": "classifier>judge-cheap",
       "first_stage_miss_budget_on_dev": 0.0,
       "first_allow_below": 0.015650302171707153,
@@ -5757,6 +6860,276 @@
       }
     },
     {
+      "name": "classifier>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.0,
+      "first_allow_below": 0.015650302171707153,
+      "first_block_above": 0.5136943012475967,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.451,
+          "ci": [
+            0.333,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.987,
+          "ci": [
+            0.974,
+            0.997
+          ]
+        },
+        "reach_last_stage": 0.521,
+        "cost_per_1000_usd": 4.2894,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 3,
+          "escalated_n": 24
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.355,
+          "ci": [
+            0.242,
+            0.871
+          ]
+        },
+        "auroc": {
+          "value": 0.965,
+          "ci": [
+            0.939,
+            0.986
+          ]
+        },
+        "reach_last_stage": 0.559,
+        "cost_per_1000_usd": 4.7526,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 4,
+          "safe_blocked_n": 5,
+          "escalated_n": 36
+        }
+      }
+    },
+    {
+      "name": "classifier>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.02,
+      "first_allow_below": 0.015650302171707153,
+      "first_block_above": 0.5136943012475967,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.451,
+          "ci": [
+            0.333,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.987,
+          "ci": [
+            0.974,
+            0.997
+          ]
+        },
+        "reach_last_stage": 0.521,
+        "cost_per_1000_usd": 4.2894,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 3,
+          "escalated_n": 24
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.355,
+          "ci": [
+            0.242,
+            0.871
+          ]
+        },
+        "auroc": {
+          "value": 0.965,
+          "ci": [
+            0.939,
+            0.986
+          ]
+        },
+        "reach_last_stage": 0.559,
+        "cost_per_1000_usd": 4.7526,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 4,
+          "safe_blocked_n": 5,
+          "escalated_n": 36
+        }
+      }
+    },
+    {
+      "name": "classifier>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.05,
+      "first_allow_below": 0.015777915716171265,
+      "first_block_above": 0.5136943012475967,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.451,
+          "ci": [
+            0.333,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.988,
+          "ci": [
+            0.975,
+            0.997
+          ]
+        },
+        "reach_last_stage": 0.475,
+        "cost_per_1000_usd": 3.8499,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 3,
+          "escalated_n": 22
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.355,
+          "ci": [
+            0.242,
+            0.887
+          ]
+        },
+        "auroc": {
+          "value": 0.958,
+          "ci": [
+            0.927,
+            0.983
+          ]
+        },
+        "reach_last_stage": 0.512,
+        "cost_per_1000_usd": 4.2957,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 5,
+          "safe_blocked_n": 5,
+          "escalated_n": 33
+        }
+      }
+    },
+    {
+      "name": "classifier>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.1,
+      "first_allow_below": 0.016028136014938354,
+      "first_block_above": 0.5136943012475967,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.451,
+          "ci": [
+            0.333,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.989,
+          "ci": [
+            0.977,
+            0.998
+          ]
+        },
+        "reach_last_stage": 0.412,
+        "cost_per_1000_usd": 3.2098,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 3,
+          "escalated_n": 16
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.355,
+          "ci": [
+            0.242,
+            0.887
+          ]
+        },
+        "auroc": {
+          "value": 0.961,
+          "ci": [
+            0.932,
+            0.986
+          ]
+        },
+        "reach_last_stage": 0.441,
+        "cost_per_1000_usd": 3.5782,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 5,
+          "safe_blocked_n": 5,
+          "escalated_n": 24
+        }
+      }
+    },
+    {
+      "name": "classifier>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.2,
+      "first_allow_below": 0.017244964838027954,
+      "first_block_above": 0.5136943012475967,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.451,
+          "ci": [
+            0.333,
+            0.961
+          ]
+        },
+        "auroc": {
+          "value": 0.979,
+          "ci": [
+            0.959,
+            0.995
+          ]
+        },
+        "reach_last_stage": 0.3,
+        "cost_per_1000_usd": 2.242,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 3,
+          "safe_blocked_n": 3,
+          "escalated_n": 11
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.355,
+          "ci": [
+            0.242,
+            0.871
+          ]
+        },
+        "auroc": {
+          "value": 0.939,
+          "ci": [
+            0.901,
+            0.972
+          ]
+        },
+        "reach_last_stage": 0.303,
+        "cost_per_1000_usd": 2.3717,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 8,
+          "safe_blocked_n": 5,
+          "escalated_n": 16
+        }
+      }
+    },
+    {
       "name": "jev>judge-cheap",
       "first_stage_miss_budget_on_dev": 0.0,
       "first_allow_below": 0.045,
@@ -6023,6 +7396,546 @@
           "unsafe_allowed_n": 9,
           "safe_blocked_n": 1,
           "escalated_n": 14
+        }
+      }
+    },
+    {
+      "name": "jev>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.0,
+      "first_allow_below": 0.045,
+      "first_block_above": 0.885,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.863,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.976,
+          "ci": [
+            0.941,
+            0.998
+          ]
+        },
+        "reach_last_stage": 0.693,
+        "cost_per_1000_usd": 5.9023,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 2,
+          "safe_blocked_n": 1,
+          "escalated_n": 27
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.726,
+          "ci": [
+            0.565,
+            0.871
+          ]
+        },
+        "auroc": {
+          "value": 0.951,
+          "ci": [
+            0.903,
+            0.987
+          ]
+        },
+        "reach_last_stage": 0.717,
+        "cost_per_1000_usd": 6.3107,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 5,
+          "safe_blocked_n": 3,
+          "escalated_n": 43
+        }
+      }
+    },
+    {
+      "name": "jev>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.02,
+      "first_allow_below": 0.045,
+      "first_block_above": 0.885,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.863,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.976,
+          "ci": [
+            0.941,
+            0.998
+          ]
+        },
+        "reach_last_stage": 0.693,
+        "cost_per_1000_usd": 5.9023,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 2,
+          "safe_blocked_n": 1,
+          "escalated_n": 27
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.726,
+          "ci": [
+            0.565,
+            0.871
+          ]
+        },
+        "auroc": {
+          "value": 0.951,
+          "ci": [
+            0.903,
+            0.987
+          ]
+        },
+        "reach_last_stage": 0.717,
+        "cost_per_1000_usd": 6.3107,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 5,
+          "safe_blocked_n": 3,
+          "escalated_n": 43
+        }
+      }
+    },
+    {
+      "name": "jev>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.05,
+      "first_allow_below": 0.065,
+      "first_block_above": 0.885,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.863,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.977,
+          "ci": [
+            0.942,
+            0.998
+          ]
+        },
+        "reach_last_stage": 0.498,
+        "cost_per_1000_usd": 4.3906,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 2,
+          "safe_blocked_n": 1,
+          "escalated_n": 23
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.726,
+          "ci": [
+            0.565,
+            0.871
+          ]
+        },
+        "auroc": {
+          "value": 0.936,
+          "ci": [
+            0.88,
+            0.979
+          ]
+        },
+        "reach_last_stage": 0.515,
+        "cost_per_1000_usd": 4.7322,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 6,
+          "safe_blocked_n": 3,
+          "escalated_n": 36
+        }
+      }
+    },
+    {
+      "name": "jev>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.1,
+      "first_allow_below": 0.11499999999999999,
+      "first_block_above": 0.885,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.922,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.98,
+          "ci": [
+            0.945,
+            0.999
+          ]
+        },
+        "reach_last_stage": 0.249,
+        "cost_per_1000_usd": 2.2365,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 2,
+          "safe_blocked_n": 1,
+          "escalated_n": 13
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.806,
+          "ci": [
+            0.597,
+            0.903
+          ]
+        },
+        "auroc": {
+          "value": 0.936,
+          "ci": [
+            0.878,
+            0.982
+          ]
+        },
+        "reach_last_stage": 0.273,
+        "cost_per_1000_usd": 2.6181,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 6,
+          "safe_blocked_n": 2,
+          "escalated_n": 23
+        }
+      }
+    },
+    {
+      "name": "jev>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.2,
+      "first_allow_below": 0.235,
+      "first_block_above": 0.885,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.922,
+          "ci": [
+            0.706,
+            0.98
+          ]
+        },
+        "auroc": {
+          "value": 0.974,
+          "ci": [
+            0.937,
+            0.997
+          ]
+        },
+        "reach_last_stage": 0.093,
+        "cost_per_1000_usd": 0.8351,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 4,
+          "safe_blocked_n": 1,
+          "escalated_n": 6
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.774,
+          "ci": [
+            0.597,
+            0.887
+          ]
+        },
+        "auroc": {
+          "value": 0.928,
+          "ci": [
+            0.87,
+            0.975
+          ]
+        },
+        "reach_last_stage": 0.114,
+        "cost_per_1000_usd": 1.1324,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 9,
+          "safe_blocked_n": 1,
+          "escalated_n": 12
+        }
+      }
+    },
+    {
+      "name": "judge-cheap>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.0,
+      "first_allow_below": 0.025,
+      "first_block_above": 0.375,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.843,
+          "ci": [
+            0.0,
+            1.0
+          ]
+        },
+        "auroc": {
+          "value": 0.99,
+          "ci": [
+            0.977,
+            0.999
+          ]
+        },
+        "reach_last_stage": 0.525,
+        "cost_per_1000_usd": 4.7131,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 3,
+          "escalated_n": 24
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.71,
+          "ci": [
+            0.0,
+            0.823
+          ]
+        },
+        "auroc": {
+          "value": 0.975,
+          "ci": [
+            0.956,
+            0.99
+          ]
+        },
+        "reach_last_stage": 0.556,
+        "cost_per_1000_usd": 5.0869,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 3,
+          "safe_blocked_n": 10,
+          "escalated_n": 36
+        }
+      }
+    },
+    {
+      "name": "judge-cheap>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.02,
+      "first_allow_below": 0.025,
+      "first_block_above": 0.375,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.843,
+          "ci": [
+            0.0,
+            1.0
+          ]
+        },
+        "auroc": {
+          "value": 0.99,
+          "ci": [
+            0.977,
+            0.999
+          ]
+        },
+        "reach_last_stage": 0.525,
+        "cost_per_1000_usd": 4.7131,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 3,
+          "escalated_n": 24
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.71,
+          "ci": [
+            0.0,
+            0.823
+          ]
+        },
+        "auroc": {
+          "value": 0.975,
+          "ci": [
+            0.956,
+            0.99
+          ]
+        },
+        "reach_last_stage": 0.556,
+        "cost_per_1000_usd": 5.0869,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 3,
+          "safe_blocked_n": 10,
+          "escalated_n": 36
+        }
+      }
+    },
+    {
+      "name": "judge-cheap>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.05,
+      "first_allow_below": 0.045,
+      "first_block_above": 0.375,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.843,
+          "ci": [
+            0.0,
+            1.0
+          ]
+        },
+        "auroc": {
+          "value": 0.991,
+          "ci": [
+            0.978,
+            0.999
+          ]
+        },
+        "reach_last_stage": 0.35,
+        "cost_per_1000_usd": 3.318,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 1,
+          "safe_blocked_n": 3,
+          "escalated_n": 20
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.71,
+          "ci": [
+            0.0,
+            0.823
+          ]
+        },
+        "auroc": {
+          "value": 0.961,
+          "ci": [
+            0.927,
+            0.986
+          ]
+        },
+        "reach_last_stage": 0.394,
+        "cost_per_1000_usd": 3.7729,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 4,
+          "safe_blocked_n": 10,
+          "escalated_n": 30
+        }
+      }
+    },
+    {
+      "name": "judge-cheap>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.1,
+      "first_allow_below": 0.135,
+      "first_block_above": 0.375,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.843,
+          "ci": [
+            0.0,
+            1.0
+          ]
+        },
+        "auroc": {
+          "value": 0.99,
+          "ci": [
+            0.978,
+            0.999
+          ]
+        },
+        "reach_last_stage": 0.062,
+        "cost_per_1000_usd": 0.8986,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 2,
+          "safe_blocked_n": 3,
+          "escalated_n": 9
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.71,
+          "ci": [
+            0.0,
+            0.823
+          ]
+        },
+        "auroc": {
+          "value": 0.963,
+          "ci": [
+            0.929,
+            0.987
+          ]
+        },
+        "reach_last_stage": 0.108,
+        "cost_per_1000_usd": 1.3495,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 5,
+          "safe_blocked_n": 10,
+          "escalated_n": 15
+        }
+      }
+    },
+    {
+      "name": "judge-cheap>judge-strong",
+      "first_stage_miss_budget_on_dev": 0.2,
+      "first_allow_below": 0.32499999999999996,
+      "first_block_above": 0.375,
+      "clear": {
+        "recall_at_1pct_fpr": {
+          "value": 0.843,
+          "ci": [
+            0.0,
+            1.0
+          ]
+        },
+        "auroc": {
+          "value": 0.99,
+          "ci": [
+            0.978,
+            0.999
+          ]
+        },
+        "reach_last_stage": 0.0,
+        "cost_per_1000_usd": 0.2177,
+        "deployed": {
+          "rows": 257,
+          "unsafe_allowed_n": 2,
+          "safe_blocked_n": 3,
+          "escalated_n": 0
+        }
+      },
+      "all": {
+        "recall_at_1pct_fpr": {
+          "value": 0.71,
+          "ci": [
+            0.0,
+            0.823
+          ]
+        },
+        "auroc": {
+          "value": 0.963,
+          "ci": [
+            0.929,
+            0.987
+          ]
+        },
+        "reach_last_stage": 0.007,
+        "cost_per_1000_usd": 0.3116,
+        "deployed": {
+          "rows": 297,
+          "unsafe_allowed_n": 8,
+          "safe_blocked_n": 8,
+          "escalated_n": 2
         }
       }
     }
