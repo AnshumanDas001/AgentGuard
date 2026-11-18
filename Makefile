@@ -1,4 +1,4 @@
-.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug
+.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug eval-dev test-runs report
 
 setup:  ## install dependencies
 	uv sync
@@ -76,3 +76,16 @@ augment:  ## contrastive twins of the train rows: data/augmented/train-twins.jso
 
 train-classifier-aug:  ## fine-tune the classifier on train plus the twins (models/deberta-guard-aug)
 	uv run --group ml python -m agentguard.guard.train_classifier --augment
+
+eval-dev:  ## Level 1 metrics with bootstrap CIs on the saved dev runs (no API calls)
+	uv run python -m agentguard.eval evaluate --split dev
+
+TEST_BACKENDS ?= rules classifier jev judge-cheap
+test-runs:  ## the single Phase 4 test run: each backend 3 times (run 1 is scored; 2-3 for latency)
+	for r in 1 2 3; do for b in $(TEST_BACKENDS); do \
+		uv run --group ml python -m agentguard.eval run --backend $$b --split test --allow-test --repeat $$r || exit 1; \
+	done; done
+
+report:  ## metrics with CIs on the test runs, then the charts in results/charts/ (no API calls)
+	uv run python -m agentguard.eval evaluate --split test
+	uv run --group report python -m agentguard.eval.charts

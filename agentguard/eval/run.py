@@ -142,15 +142,21 @@ async def run(
     out_dir: Path = RUNS_DIR,
     policy: ThresholdPolicy | CascadePolicy | None = None,
     retry_failed: bool = False,
+    repeat: int = 1,
 ) -> dict[str, Any]:
     """Assess every row; with retry_failed, keep the last run's good verdicts and redo the rest.
 
     Costs in the summary cover the verdicts kept plus the ones redone, i.e. one verdict per row.
     Decisions use `policy`, else the backend's own (a cascade) or dev-tuned thresholds.
+    repeat > 1 writes a separate run (<stem>-r2, ...), used only to measure latency spread.
     """
     policy = policy or policy_for(backend)
     rows = load_split(split)[:limit]
-    stem = f"{split}-{backend.name}" + (f"-first{limit}" if limit else "")
+    stem = (
+        f"{split}-{backend.name}"
+        + (f"-first{limit}" if limit else "")
+        + (f"-r{repeat}" if repeat > 1 else "")
+    )
     kept = read_kept(out_dir / f"{stem}.jsonl") if retry_failed else {}
     todo = [r for r in rows if r["id"] not in kept]
     started = time.time()
@@ -189,6 +195,7 @@ async def run(
         "backend": backend.name,
         "split": split,
         "limit": limit,
+        "repeat": repeat,
         "seconds": round(time.time() - started, 1),
         "redone_this_run": len(todo),
         **summarise(records, policy),

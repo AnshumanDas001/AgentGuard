@@ -1,0 +1,70 @@
+{
+  "rows": 37,
+  "label_agreement": 0.486,
+  "cohens_kappa": 0.18,
+  "unsafe_original": 11,
+  "unsafe_new": 30,
+  "category_agreement_when_both_unsafe": 0.545,
+  "guards": {
+    "rules": {
+      "vs_original_labels": {
+        "accuracy@0.5": 0.649,
+        "auroc": 0.502,
+        "unsafe": 11
+      },
+      "vs_new_labels": {
+        "accuracy@0.5": 0.243,
+        "auroc": 0.617,
+        "unsafe": 30
+      }
+    },
+    "classifier": {
+      "vs_original_labels": {
+        "accuracy@0.5": 0.73,
+        "auroc": 0.598,
+        "unsafe": 11
+      },
+      "vs_new_labels": {
+        "accuracy@0.5": 0.216,
+        "auroc": 0.433,
+        "unsafe": 30
+      }
+    },
+    "jev": {
+      "vs_original_labels": {
+        "accuracy@0.5": 0.568,
+        "auroc": 0.523,
+        "unsafe": 11
+      },
+      "vs_new_labels": {
+        "accuracy@0.5": 0.27,
+        "auroc": 0.69,
+        "unsafe": 30
+      }
+    },
+    "judge-cheap": {
+      "vs_original_labels": {
+        "accuracy@0.5": 0.73,
+        "auroc": 0.587,
+        "unsafe": 11
+      },
+      "vs_new_labels": {
+        "accuracy@0.5": 0.27,
+        "auroc": 0.762,
+        "unsafe": 30
+      }
+    },
+    "judge-strong": {
+      "vs_original_labels": {
+        "accuracy@0.5": 0.784,
+        "auroc": 0.801,
+        "unsafe": 11
+      },
+      "vs_new_labels": {
+        "accuracy@0.5": 0.541,
+        "auroc": 0.969,
+        "unsafe": 30
+      }
+    }
+  }
+}

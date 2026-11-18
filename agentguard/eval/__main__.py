@@ -1,4 +1,4 @@
-"""CLI: `python -m agentguard.eval run --backend NAME --split dev`, and `... tune`."""
+"""CLI: `python -m agentguard.eval run --backend NAME --split dev`, `... tune`, `... evaluate`."""
 
 from __future__ import annotations
 
@@ -29,6 +29,13 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument(
         "--allow-test", action="store_true", help="the single Phase 4 run on the frozen test split"
     )
+    run_p.add_argument(
+        "--repeat", type=int, default=1, help="2 or 3: an extra run for latency (<stem>-rN)"
+    )
+    eval_p = sub.add_parser(
+        "evaluate", help="Level 1 metrics with bootstrap CIs from saved runs (no API calls)"
+    )
+    eval_p.add_argument("--split", default="dev", choices=["dev", "test"])
     sub.add_parser(
         "tune",
         help="pick thresholds and a cascade from the saved dev runs (no API calls)",
@@ -47,6 +54,13 @@ def main(argv: list[str] | None = None) -> int:
         from agentguard.eval.relabel import compare
 
         print(json.dumps(compare(args.sheet), indent=2))
+        return 0
+    if args.command == "evaluate":
+        from agentguard.eval.evaluate import EVAL_DIR, evaluate, headline
+
+        result = evaluate(args.split)
+        print(json.dumps(headline(result), indent=2))
+        print(f"full results: {EVAL_DIR / (args.split + '.json')}")
         return 0
     if args.command == "tune":
         from agentguard.eval.tune import tune
@@ -73,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
                 limit=args.limit,
                 concurrency=args.concurrency,
                 retry_failed=args.retry_failed,
+                repeat=args.repeat,
             )
         finally:
             close = getattr(backend, "aclose", None)

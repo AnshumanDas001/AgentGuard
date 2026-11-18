@@ -58,14 +58,17 @@ class ClassifierBackend:
         return torch.softmax(logits.float(), dim=-1)[0].cpu().tolist()
 
     async def assess(self, action: ActionProposal) -> Verdict:
-        start = time.perf_counter()
         async with self._lock:
+            # Timed inside the lock: the cost of one check, not the wait behind other rows in
+            # a concurrent eval run (an agent's guard sees one action at a time).
+            start = time.perf_counter()
             probs = await asyncio.to_thread(self._probs, action)
+            elapsed_ms = (time.perf_counter() - start) * 1000
         p_unsafe = 1.0 - probs[0]
         best = max(range(1, len(LABELS)), key=lambda i: probs[i])
         return Verdict(
             p_unsafe=min(1.0, max(0.0, p_unsafe)),
             category=RiskCategory(LABELS[best]) if p_unsafe >= 0.5 else None,
-            latency_ms=(time.perf_counter() - start) * 1000,
+            latency_ms=elapsed_ms,
             raw={"backend": self.name, "probs": dict(zip(LABELS, probs, strict=True))},
         )

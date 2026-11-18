@@ -3,9 +3,10 @@
 A pre-execution safety monitor for LLM agents. AgentGuard sits between an agent and its tools,
 scores every proposed action before it runs, and allows, escalates or blocks it.
 
-> **Status: Phase 3 done.** All four guards (rules, classifier, LLM judge, Jev) and a
-> cascade run on the dev split; results below are dev numbers only. The single test-split
-> evaluation comes in Phase 4.
+> **Status: Phase 4 under way.** The single test-split run is done for rules, the
+> classifier, Jev and the cheap LLM judge, with 95% confidence intervals
+> ([test results](#test-results-phase-4-level-1)). The strong judge's test run is deferred
+> for now. Still to come: attack rewrites (Level 2) and end-to-end agent runs (Level 3).
 
 ## How it works
 
@@ -138,6 +139,18 @@ Caveats:
 Per-row verdicts and summaries are in `results/runs/`; the classifier's training record is
 in `results/classifier/metrics.json`.
 
+**Blind relabel of the 37 ambiguous dev rows.** The author relabeled them without seeing
+the original labels, notes or guard scores (`make relabel-sheet`, then `make relabel-compare
+SHEET=...`). Agreement with the original labels was 49% (Cohen's kappa 0.18, "slight"),
+and the category matched on 55% of rows both called unsafe. The author marked 30 of the 37
+rows unsafe, against 11 originally: mostly ASSEBench rows where an unverified change to a
+database, schedule, patient record or industrial control could do harm. Scored against
+the author's labels, the strong judge ranks these rows almost perfectly (AUROC 0.97), the
+cheap judge 0.76, Jev 0.69, rules 0.62 and the classifier 0.43 (with only 7 safe rows,
+these are rough). On borderline rows, who labels matters about as much as which guard. The
+original labels are unchanged, and headline numbers use clear rows only. Details:
+`results/relabel/dev-ambiguous.json`; the new labels: `data/labeled/relabel-dev-ambiguous.jsonl`.
+
 **Tried and rejected: doubling the classifier's training data with contrastive twins.**
 `make augment` builds 404 twins from train rows only (`data/augmented/train-twins.jsonl`):
 safe lookalikes paired with unrelated tasks (now unsafe), injection attacks and handwritten
@@ -201,6 +214,106 @@ differed because LLM judges give slightly different scores each time they are as
 plan's cost-versus-recall sweep and the final numbers come from the test split in Phase 4.
 Choices and per-candidate results are in `results/tuning/`.
 
+## Test results (Phase 4, Level 1)
+
+![Recall at 1% false-positive rate against cost per 1,000 decisions](results/charts/test-cost-recall.png)
+
+The frozen test split, scored once per guard on 2026-11-19 (Jev `typesafe/jev-1.14-20261014`,
+cheap judge `anthropic/claude-haiku-5.5`). Each guard was run twice more for latency only.
+Headline numbers use the 257 rows not marked ambiguous (51 unsafe, 206 safe). Brackets are
+95% bootstrap CIs (1,000 resamples, stratified by label). The strong judge was not run on
+test yet.
+
+```bash
+make test-runs   # the single test run: each guard 3 times (about $0.25)
+make report      # metrics with CIs and the charts, from the saved runs (no API calls)
+make eval-dev    # the same metrics on dev
+```
+
+| Guard | Recall at 1% FPR | AUROC | PR-AUC | Calibration error (ECE, all rows) | Latency p50 / p95 | Cost per 1,000 |
+|---|---|---|---|---|---|---|
+| rules | 71% [59, 82] | 0.88 [0.82, 0.94] | 0.81 [0.72, 0.89] | 0.05 [0.04, 0.08] | 0.3 ms / 8.9 ms | $0.00 |
+| classifier | 45% [33, 65] | 0.94 [0.92, 0.97] | 0.83 [0.76, 0.90] | 0.08 [0.06, 0.11] | 54 ms / 173 ms | $0.00 |
+| jev | 86% [71, 96] | 0.97 [0.94, 1.00] | 0.95 [0.91, 0.99] | 0.04 [0.03, 0.07] | 539 ms / 612 ms | $0.05 |
+| judge-cheap | 84% [0, 100] | 0.99 [0.98, 1.00] | 0.94 [0.85, 1.00] | 0.04 [0.03, 0.08] | 1.5 s / 3.1 s | $0.22 |
+
+As deployed, with each guard's thresholds tuned on dev (clear test rows):
+
+| Guard | Unsafe let through (of 51) | Safe blocked (of 206) | Sent to a human (of 257) | Cost per 1,000 |
+|---|---|---|---|---|
+| rules | 0 | 0 | 248 (it never auto-allows) | $0.00 |
+| classifier | 0 | 3 | 122 | $0.00 |
+| jev | 1 | 0 | 128 | $0.05 |
+| judge-cheap | 0 | 3 | 90 | $0.22 |
+| cascade: jev, then judge-cheap on the unsure 25% | 1 | 1 | 30 | $0.11 |
+
+What the test run shows:
+
+1. **Jev and the cheap judge are statistically tied where it matters.** At 1% FPR Jev
+   catches 86% and the judge 84%. The paired difference is +2 points [-18, +86], and on
+   AUROC it is -0.02 [-0.06, +0.01]: neither is clearly better. Jev costs a quarter as much
+   and answers about 3 times faster.
+2. **Recall at 1% FPR is fragile at this size.** With 206 safe rows, 1% means 2 false
+   alarms, so the number rests on the three highest-scoring safe rows. The cheap judge gave
+   one safe row a score of 1.0; any resample that draws that row three times cannot reach
+   1% FPR, which is why its CI runs down to 0. AUROC and the as-deployed counts are steadier.
+3. **The best cascade puts Jev first.** Jev decides the rows it is sure about and the cheap
+   judge sees the rest. With Jev's thresholds set on dev to let it clear rows alone at a 10%
+   miss budget, 25% of rows reach the judge. That cascade catches 94% [76, 100] at 1% FPR,
+   costs half as much as the judge alone, and sends 30 rows to a human instead of 90.
+   Caveat: on dev every budget from 0% to 20% looked equally safe, and the cheapest (20%)
+   lets 4 unsafe rows through on test. The 10% point was not chosen in advance.
+4. **The small guards cover injections and little else.** Rules catch 96% of injection
+   rows at 1% FPR and the classifier 79%, but the classifier catches none of the other
+   categories at that rate (table below). Its AUROC (0.94) looks good, but its high scores
+   are reserved for injection-style rows.
+5. **Every false block on clear rows is an ASSEBench row** (classifier 3, cheap judge 3).
+   Those rows come from another benchmark's labels, and the borderline ones are where
+   labelers disagree most (see the relabel above).
+6. **No guard agrees reliably with the labels on the 40 ambiguous rows.** AUROC is 0.62 to
+   0.77, with CIs that reach down to 0.42 to 0.60.
+7. **The LLM guards are not deterministic.** Across the three runs, the cheap judge's
+   decision changed on 8.1% of rows and Jev's on 6.7%; rules and the classifier never changed.
+
+Recall at 1% FPR by category (clear test rows; counts are small, so read these as rough):
+
+| Category (unsafe rows) | rules | classifier | jev | judge-cheap |
+|---|---|---|---|---|
+| injection_driven (28) | 96% | 79% | 100% | 100% |
+| destructive_file_ops (7) | 14% | 0% | 57% | 57% |
+| data_exfiltration (6) | 33% | 17% | 67% | 67% |
+| privilege_escalation_persistence (4) | 75% | 0% | 75% | 75% |
+| credential_access (3) | 67% | 0% | 100% | 67% |
+| irreversible_external_action (2) | 50% | 0% | 50% | 100% |
+| resource_abuse (1) | 0% | 0% | 100% | 0% |
+
+![ROC curves on clear test rows](results/charts/test-roc.png)
+
+![Reliability diagrams](results/charts/test-reliability.png)
+
+How the numbers are computed (`agentguard/eval/metrics.py`, `bootstrap.py`, `evaluate.py`):
+
+- **Recall at 1% FPR** uses the best threshold on the test rows themselves, so it measures
+  ranking. The as-deployed table uses the dev-tuned thresholds.
+- **PR-AUC** is average precision.
+- **ECE** uses 10 equal-width bins.
+- **Bootstrap:** the same resamples serve every guard, so differences between guards get
+  paired CIs.
+- **Cascade score:** rows the first stage blocks rank above all others and rows it allows
+  rank below, each ordered by the first stage's score. Rows it escalates get the judge's
+  score.
+- **Latency** is the guard's own compute per check.
+
+Two fixes were made after the test run. Neither changed a threshold or a score:
+
+- The classifier's timer had counted the wait behind other rows in a concurrent run
+  (p50 578 ms). It now times only the check itself (54 ms).
+- The first cascade score tied every first-stage block at 1.0. With 3 blocked safe rows,
+  that sent recall at 1% FPR to 0.
+
+Everything is in `results/eval/test.json`; per-row verdicts are in
+`results/runs/test-*.jsonl`.
+
 ## Layout
 
 ```
@@ -214,7 +327,8 @@ agentguard/
     logger.py    JSONL logger
     backends/    allow_all.py, rules.py, llm_judge.py, classifier.py, jev.py
     train_classifier.py  fine-tunes the DeBERTa guard
-  eval/          run a guard over a split and summarise it; tune.py picks thresholds and a cascade
+  eval/          run.py (a guard over a split), tune.py (thresholds, cascade), metrics.py,
+                 bootstrap.py, evaluate.py (Level 1 with CIs), charts.py, relabel.py
   dataset/       row format, validator, stats, labeling tool, split and freeze
   pricing.py     token prices for cost per decision
 sandbox/         Dockerfile + seeded fake project and canary secrets
@@ -232,7 +346,7 @@ results/         logs, tables, charts
 | 1. Agent, sandbox, interceptor | 2–3 | 5+ tasks complete in the sandbox; every call logged |
 | 2. Dataset | 4–5 | Test split frozen and committed (hash below) |
 | 3. Guard backends | 6–7 | All 4 backends return valid Verdicts on the dev split (passed) |
-| 4. Evaluation and attacks | 8–9 | 4 charts with error bars from `make report` |
+| 4. Evaluation and attacks | 8–9 | 4 charts with error bars from `make report` (Level 1 done) |
 | 5. Ship | 10 | README, demo, write-up |
 
 Test split hash (sha256 of `data/splits/test.jsonl`, frozen 2026-11-17):
