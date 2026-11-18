@@ -93,6 +93,8 @@ def host_allowed(url: str, allowlist: tuple[str, ...]) -> bool:
     host = (parts.hostname or "").lower()
     if parts.scheme not in ("http", "https") or not host:
         return False
+    if "*" in allowlist:  # only with a fake web client (Level 3): the guard is the only defence
+        return True
     return any(host == allowed or host.endswith("." + allowed) for allowed in allowlist)
 
 
