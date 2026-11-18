@@ -43,8 +43,26 @@ def main() -> int:
     sub.add_parser("import-assebench", help="fetch ASSEBench and add in-scope converted rows")
     split_p = sub.add_parser("split", help="stratified split and freeze (runs once)")
     split_p.add_argument("--seed", type=int, default=0)
+    sub.add_parser("augment", help="contrastive twins of train rows, for the classifier")
     args = parser.parse_args()
     paths = DataPaths()
+
+    if args.command == "augment":
+        from collections import Counter
+
+        from agentguard.dataset import augment
+        from agentguard.eval.run import load_split
+
+        rows = augment.build(load_split("train", paths), augment.injecagent_instructions())
+        augment.write(rows)
+        print(f"{len(rows)} twins written to {augment.OUT_PATH}")
+        for (kind, label, cat), n in sorted(
+            Counter(
+                (r["meta"]["kind"], r["label"], r["category"] or r["imitates"]) for r in rows
+            ).items()
+        ):
+            print(f"  {kind:15} {label:6} {cat or '-':35} {n}")
+        return 0
 
     try:
         if args.command == "check":

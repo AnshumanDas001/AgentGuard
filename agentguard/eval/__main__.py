@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import sys
+from pathlib import Path
 
 from agentguard.config import load_dotenv
 from agentguard.eval.run import run
@@ -32,8 +33,21 @@ def main(argv: list[str] | None = None) -> int:
         "tune",
         help="pick thresholds and a cascade from the saved dev runs (no API calls)",
     )
+    sub.add_parser("relabel-sheet", help="blind sheet of the ambiguous dev rows")
+    compare_p = sub.add_parser("relabel-compare", help="compare a filled relabel sheet")
+    compare_p.add_argument("sheet", type=Path)
     args = parser.parse_args(argv)
 
+    if args.command == "relabel-sheet":
+        from agentguard.eval.relabel import SHEET_PATH, export
+
+        print(f"{export()} rows written to {SHEET_PATH}")
+        return 0
+    if args.command == "relabel-compare":
+        from agentguard.eval.relabel import compare
+
+        print(json.dumps(compare(args.sheet), indent=2))
+        return 0
     if args.command == "tune":
         from agentguard.eval.tune import tune
 

@@ -12,6 +12,7 @@ BACKEND_NAMES = (
     "judge-cheap",
     "judge-strong",
     "classifier",
+    "classifier-aug",
     "jev",
     "cascade",
 )
@@ -30,6 +31,11 @@ def build_backend(name: str) -> GuardBackend:
         from agentguard.guard.backends.classifier import ClassifierBackend
 
         return ClassifierBackend.load()
+    if name == "classifier-aug":
+        from agentguard.config import ROOT
+        from agentguard.guard.backends.classifier import ClassifierBackend
+
+        return ClassifierBackend.load(ROOT / "models" / "deberta-guard-aug", name="classifier-aug")
     if name == "jev":
         from agentguard.guard.backends.jev import JevBackend
 

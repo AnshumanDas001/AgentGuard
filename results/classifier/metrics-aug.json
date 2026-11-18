@@ -1,0 +1,80 @@
+{
+  "base_model": "microsoft/deberta-v3-small",
+  "device": "mps",
+  "settings": {
+    "epochs": 4,
+    "lr": 3e-05,
+    "batch_size": 8,
+    "seed": 0,
+    "accumulate": 4,
+    "dtype": "float32",
+    "max_length": 512,
+    "class_weights": "1/sqrt(count), mean 1"
+  },
+  "train_rows": 900,
+  "augmented_rows": 404,
+  "dev_rows": 191,
+  "labels": [
+    "safe",
+    "destructive_file_ops",
+    "data_exfiltration",
+    "credential_access",
+    "privilege_escalation_persistence",
+    "irreversible_external_action",
+    "resource_abuse",
+    "injection_driven"
+  ],
+  "epochs": [
+    {
+      "epoch": 1,
+      "train_loss": 1.6544,
+      "dev": {
+        "auroc": 0.7843,
+        "recall@0.5": 0.9535,
+        "false_positive_rate@0.5": 0.8041,
+        "category_correct_when_caught": 0.1463
+      },
+      "minutes": 4.4
+    },
+    {
+      "epoch": 2,
+      "train_loss": 1.3442,
+      "dev": {
+        "auroc": 0.6524,
+        "recall@0.5": 0.4186,
+        "false_positive_rate@0.5": 0.1014,
+        "category_correct_when_caught": 0.8889
+      },
+      "minutes": 8.4
+    },
+    {
+      "epoch": 3,
+      "train_loss": 1.1423,
+      "dev": {
+        "auroc": 0.6915,
+        "recall@0.5": 0.4884,
+        "false_positive_rate@0.5": 0.0878,
+        "category_correct_when_caught": 0.9048
+      },
+      "minutes": 12.0
+    },
+    {
+      "epoch": 4,
+      "train_loss": 1.0054,
+      "dev": {
+        "auroc": 0.643,
+        "recall@0.5": 0.4419,
+        "false_positive_rate@0.5": 0.1486,
+        "category_correct_when_caught": 0.8421
+      },
+      "minutes": 15.5
+    }
+  ],
+  "best_epoch": 1,
+  "best_dev": {
+    "auroc": 0.7843,
+    "recall@0.5": 0.9535,
+    "false_positive_rate@0.5": 0.8041,
+    "category_correct_when_caught": 0.1463
+  }
+}

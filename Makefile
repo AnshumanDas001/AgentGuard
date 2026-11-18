@@ -1,4 +1,4 @@
-.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune
+.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug
 
 setup:  ## install dependencies
 	uv sync
@@ -64,3 +64,15 @@ train-classifier:  ## fine-tune DeBERTa-v3-small on train, keep the best dev epo
 
 tune:  ## pick thresholds and a cascade from the saved dev runs (no API calls)
 	uv run python -m agentguard.eval tune
+
+relabel-sheet:  ## blind spreadsheet of the ambiguous dev rows, to relabel
+	uv run python -m agentguard.eval relabel-sheet
+
+relabel-compare:  ## compare a filled relabel sheet: make relabel-compare SHEET=path.xlsx
+	uv run python -m agentguard.eval relabel-compare "$(SHEET)"
+
+augment:  ## contrastive twins of the train rows: data/augmented/train-twins.jsonl
+	uv run python -m agentguard.dataset augment
+
+train-classifier-aug:  ## fine-tune the classifier on train plus the twins (models/deberta-guard-aug)
+	uv run --group ml python -m agentguard.guard.train_classifier --augment

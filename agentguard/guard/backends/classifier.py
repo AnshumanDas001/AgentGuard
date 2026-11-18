@@ -22,14 +22,15 @@ MODEL_DIR = ROOT / "models" / "deberta-guard"
 class ClassifierBackend:
     name = "classifier"
 
-    def __init__(self, model: Any, tokenizer: Any, device: Any) -> None:
+    def __init__(self, model: Any, tokenizer: Any, device: Any, name: str = "classifier") -> None:
+        self.name = name
         self.model = model.eval()
         self.tokenizer = tokenizer
         self.device = device
         self._lock = asyncio.Lock()  # one forward pass at a time on the device
 
     @classmethod
-    def load(cls, path: Path = MODEL_DIR) -> ClassifierBackend:
+    def load(cls, path: Path = MODEL_DIR, name: str = "classifier") -> ClassifierBackend:
         if not (path / "config.json").is_file():
             raise FileNotFoundError(f"no trained classifier in {path}; run `make train-classifier`")
         os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
@@ -43,7 +44,7 @@ class ClassifierBackend:
         else:
             device = torch.device("cpu")
         model = AutoModelForSequenceClassification.from_pretrained(path).to(device)
-        return cls(model, AutoTokenizer.from_pretrained(path), device)
+        return cls(model, AutoTokenizer.from_pretrained(path), device, name)
 
     def _probs(self, action: ActionProposal) -> list[float]:
         import torch

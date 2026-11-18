@@ -1,6 +1,7 @@
 """Fine-tune DeBERTa-v3-small on the train split; pick the epoch with the best dev AUROC.
 
-    make train-classifier
+    make train-classifier            # train split only
+    make train-classifier-aug        # train split plus the contrastive twins
 
 The model has 8 outputs (safe + the 7 categories). Its p_unsafe is 1 - P(safe), and its
 category is the most likely unsafe class. Rare classes get larger loss weights. Weights are
@@ -37,6 +38,7 @@ from agentguard.guard.classifier_text import LABELS, MAX_LENGTH, classifier_text
 
 BASE_MODEL = "microsoft/deberta-v3-small"
 MODEL_DIR = ROOT / "models" / "deberta-guard"
+AUG_MODEL_DIR = ROOT / "models" / "deberta-guard-aug"
 
 
 def device() -> torch.device:
@@ -96,12 +98,19 @@ def dev_metrics(rows: list[dict[str, Any]], probs: list[list[float]]) -> dict[st
 
 
 def train(
-    epochs: int, lr: float, batch_size: int, seed: int, out: Path, accumulate: int = 4
+    epochs: int,
+    lr: float,
+    batch_size: int,
+    seed: int,
+    out: Path,
+    accumulate: int = 4,
+    extra_rows: list[dict[str, Any]] | None = None,
+    metrics_name: str = "metrics.json",
 ) -> dict[str, Any]:
     random.seed(seed)
     torch.manual_seed(seed)
     dev = device()
-    train_rows, dev_rows = load_split("train"), load_split("dev")
+    train_rows, dev_rows = load_split("train") + (extra_rows or []), load_split("dev")
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
     model = AutoModelForSequenceClassification.from_pretrained(
         BASE_MODEL,
@@ -181,6 +190,7 @@ def train(
             "class_weights": "1/sqrt(count), mean 1",
         },
         "train_rows": len(train_rows),
+        "augmented_rows": len(extra_rows or []),
         "dev_rows": len(dev_rows),
         "labels": LABELS,
         "epochs": history,
@@ -189,7 +199,7 @@ def train(
     }
     (out / "metrics.json").write_text(json.dumps(report, indent=2) + "\n")
     (RESULTS_DIR / "classifier").mkdir(parents=True, exist_ok=True)
-    shutil.copy(out / "metrics.json", RESULTS_DIR / "classifier" / "metrics.json")
+    shutil.copy(out / "metrics.json", RESULTS_DIR / "classifier" / metrics_name)
     return report
 
 
@@ -202,9 +212,36 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--accumulate", type=int, default=4, help="split each batch into this many pieces"
     )
-    parser.add_argument("--out", type=Path, default=MODEL_DIR)
+    parser.add_argument(
+        "--augment",
+        action="store_true",
+        help="add data/augmented/train-twins.jsonl; saves to models/deberta-guard-aug",
+    )
+    parser.add_argument(
+        "--augment-kinds",
+        nargs="+",
+        default=None,
+        help="only these twin kinds (unsafe_swap, safe_swap, safe_requested)",
+    )
+    parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args(argv)
-    report = train(args.epochs, args.lr, args.batch_size, args.seed, args.out, args.accumulate)
+    extra = None
+    if args.augment:
+        from agentguard.dataset.augment import load
+
+        extra = [
+            r for r in load() if not args.augment_kinds or r["meta"]["kind"] in args.augment_kinds
+        ]
+    report = train(
+        args.epochs,
+        args.lr,
+        args.batch_size,
+        args.seed,
+        args.out or (AUG_MODEL_DIR if args.augment else MODEL_DIR),
+        args.accumulate,
+        extra_rows=extra,
+        metrics_name="metrics-aug.json" if args.augment else "metrics.json",
+    )
     print(json.dumps({"best_epoch": report["best_epoch"], "best_dev": report["best_dev"]}))
     return 0
 

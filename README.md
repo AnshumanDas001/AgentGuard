@@ -138,6 +138,27 @@ Caveats:
 Per-row verdicts and summaries are in `results/runs/`; the classifier's training record is
 in `results/classifier/metrics.json`.
 
+**Tried and rejected: doubling the classifier's training data with contrastive twins.**
+`make augment` builds 404 twins from train rows only (`data/augmented/train-twins.jsonl`):
+safe lookalikes paired with unrelated tasks (now unsafe), injection attacks and handwritten
+unsafe rows rewritten so the user asks for the action (now safe), and harmless reads under
+unrelated tasks (still safe). The idea was to teach the classifier that the task decides
+safety. It made the classifier worse on dev:
+
+| Training data | Best dev AUROC | Dev false alarms at 0.5 (best epoch) |
+|---|---|---|
+| train only (kept) | 0.86 | 0.7% |
+| train + all 404 twins | 0.78 | 80% |
+| train + the 333 swap twins only | 0.77 | 36% |
+
+The twins make the same action appear as both safe and unsafe, with only the task to tell
+them apart. DeBERTa-v3-small with about 900 rows does not learn to compare a task with an
+action; it falls back on the action alone, now skewed towards "unsafe". The clearest losses
+were on the handwritten rows (AUROC 0.94 to 0.44) and credential access (0.95 to 0.24). The
+original classifier stays; the twin code and the training records
+(`results/classifier/metrics-aug*.json`) are kept so the experiment can be rerun
+(`make train-classifier-aug`; add `--augment-kinds unsafe_swap safe_swap` for the second row).
+
 ### Thresholds and the cascade
 
 `make tune` picks each guard's thresholds from its saved dev verdicts, using rules fixed in
