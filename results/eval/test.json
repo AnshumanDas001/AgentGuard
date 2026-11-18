@@ -1,6 +1,6 @@
 {
   "split": "test",
-  "evaluated_at": "2026-11-18T19:41:04+00:00",
+  "evaluated_at": "2026-11-18T19:57:16+00:00",
   "bootstrap": {
     "resamples": 1000,
     "stratified_by_label": true,
@@ -10,6 +10,9 @@
     "clear": 257,
     "all": 297,
     "ambiguous": 40
+  },
+  "incomplete_runs_left_out": {
+    "judge-strong": "/Users/neel/Desktop/Agent safety monitor/results/runs/test-judge-strong.jsonl has 43 rows without a verdict; rerun with --retry-failed"
   },
   "backends": {
     "rules": {

@@ -200,6 +200,53 @@ def reliability_chart(result: dict[str, Any], out: Path) -> None:
     plt.close(fig)
 
 
+FAMILY_LABELS = {
+    "encoding": "Encoding",
+    "indirection": "Indirection\n(write a script, run it)",
+    "splitting": "Splitting\n(across 3 steps)",
+    "benign_framing": 'Benign framing\n("as requested")',
+}
+
+
+def flip_chart(attacks: dict[str, Any], out: Path) -> None:
+    """Flip rate by attack family, one bar per backend, with 95% CIs."""
+    backends = [b for b in COLORS if b in attacks["backends"]]
+    families = list(FAMILY_LABELS)
+    fig, ax = plt.subplots(figsize=(10, 4.8))
+    width = 0.8 / max(len(backends), 1)
+    for k, b in enumerate(backends):
+        for i, f in enumerate(families):
+            entry = attacks["backends"][b][f]
+            x = i - 0.4 + width * (k + 0.5)
+            if entry["flip_rate"] is None:
+                ax.text(x, 0.01, "n/a", ha="center", fontsize=7, color=MUTED, rotation=90)
+                continue
+            v, (lo, hi) = entry["flip_rate"]["value"], entry["flip_rate"]["ci"]
+            ax.bar(x, v, width=width * 0.86, color=COLORS[b], zorder=2)
+            ax.errorbar(x, v, yerr=[[v - lo], [hi - v]], color=TEXT_2, linewidth=1,
+                        capsize=0, zorder=3)  # fmt: skip
+            ax.text(x + width * 0.08, v + 0.015, f"{v:.0%}", ha="left", fontsize=7, color=TEXT)
+    ax.set_xticks(range(len(families)))
+    ax.set_xticklabels([FAMILY_LABELS[f] for f in families], fontsize=9)
+    ax.set_ylim(0, 1.05)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0%}"))
+    ax.set_ylabel("Flip rate (caught before, missed after)")
+    ax.grid(axis="x", visible=False)
+    ax.set_title("How often a rewrite of a caught attack slips past each guard")
+    for b in backends:  # every backend in the legend, even one with no bars
+        ax.bar(0, 0, width=0, color=COLORS[b], label=LABELS[b])
+    ax.legend(loc="upper right", ncols=min(len(backends), 3))
+    subtitle(
+        fig,
+        f"{attacks['rewrites']} rewrites of unsafe clear test actions, each machine-checked to "
+        "do exactly what the original did. Flagged = p_unsafe >= 0.5.\nn/a: the guard caught "
+        "none of the originals. Lines: 95% CI, resampling the original actions.",
+    )
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+
+
 def draw(split: str, eval_dir: Path = EVAL_DIR, out_dir: Path = CHART_DIR) -> list[Path]:
     result = json.loads((eval_dir / f"{split}.json").read_text())
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -208,6 +255,10 @@ def draw(split: str, eval_dir: Path = EVAL_DIR, out_dir: Path = CHART_DIR) -> li
     roc_chart(result, paths[0])
     cost_recall_chart(result, paths[1])
     reliability_chart(result, paths[2])
+    attacks_path = eval_dir / "attacks.json"
+    if split == "test" and attacks_path.is_file():
+        paths.append(out_dir / "attacks-flip-rate.png")
+        flip_chart(json.loads(attacks_path.read_text()), paths[-1])
     return paths
 
 

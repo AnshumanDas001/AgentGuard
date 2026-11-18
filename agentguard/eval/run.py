@@ -20,16 +20,18 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from agentguard.config import RESULTS_DIR
+from agentguard.config import RESULTS_DIR, ROOT
 from agentguard.dataset.store import DataPaths
 from agentguard.guard.policy import CascadePolicy, ThresholdPolicy, policy_for
 from agentguard.guard.schemas import ActionProposal, GuardBackend, Verdict
 
 RUNS_DIR = RESULTS_DIR / "runs"
+# Level 2 rewrites of unsafe test rows (agentguard/eval/attacks.py), run like a split.
+ATTACKS_PATH = ROOT / "data" / "attacks" / "rewrites.jsonl"
 
 
 def load_split(name: str, paths: DataPaths | None = None) -> list[dict[str, Any]]:
-    path = (paths or DataPaths()).split_file(name)
+    path = ATTACKS_PATH if name == "attacks" else (paths or DataPaths()).split_file(name)
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 

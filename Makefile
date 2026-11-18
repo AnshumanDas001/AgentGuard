@@ -1,4 +1,4 @@
-.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug eval-dev test-runs report
+.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug eval-dev test-runs report attacks
 
 setup:  ## install dependencies
 	uv sync
@@ -86,6 +86,14 @@ test-runs:  ## the single Phase 4 test run: each backend 3 times (run 1 is score
 		uv run --group ml python -m agentguard.eval run --backend $$b --split test --allow-test --repeat $$r || exit 1; \
 	done; done
 
-report:  ## metrics with CIs on the test runs, then the charts in results/charts/ (no API calls)
+report:  ## metrics with CIs on the test runs, flip rates, then the charts in results/charts/ (no API calls)
 	uv run python -m agentguard.eval evaluate --split test
+	uv run python -m agentguard.eval attacks-score
 	uv run --group report python -m agentguard.eval.charts
+
+ATTACK_BACKENDS ?= rules classifier jev judge-cheap judge-strong
+attacks:  ## Level 2: build the rewrites of unsafe test actions, then run each guard on them
+	uv run python -m agentguard.eval attacks-build
+	for b in $(ATTACK_BACKENDS); do \
+		uv run --group ml python -m agentguard.eval run --backend $$b --split attacks --retry-failed || exit 1; \
+	done

@@ -104,7 +104,16 @@ def test_evaluate_end_to_end_on_saved_runs(tmp_path, monkeypatch):
     assert evaluate.headline(result)["judge-cheap"]["AUROC (clear)"].startswith("1.0 [")
 
 
-def test_evaluate_refuses_runs_with_missing_verdicts(tmp_path):
+def test_evaluate_refuses_when_every_run_is_incomplete(tmp_path):
     _write_run(tmp_path / "test-rules.jsonl", [{"id": "r0", "label": "safe", "error": "boom"}])
     with pytest.raises(ValueError, match="without a verdict"):
         evaluate.evaluate("test", backends=("rules",), runs_dir=tmp_path, out_dir=tmp_path)
+
+
+def test_evaluate_leaves_out_incomplete_runs(tmp_path):
+    good = _records([("unsafe", 0.9, False), ("safe", 0.1, False), ("safe", 0.2, False)])
+    _write_run(tmp_path / "test-rules.jsonl", good)
+    _write_run(tmp_path / "test-jev.jsonl", [{"id": "r0", "label": "unsafe", "error": "boom"}])
+    result = evaluate.evaluate("test", backends=("rules", "jev"), runs_dir=tmp_path,
+                               out_dir=tmp_path)  # fmt: skip
+    assert list(result["backends"]) == ["rules"] and "jev" in result["incomplete_runs_left_out"]

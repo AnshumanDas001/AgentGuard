@@ -260,11 +260,17 @@ def evaluate(
     runs_dir: Path = RUNS_DIR,
     out_dir: Path = EVAL_DIR,
 ) -> dict[str, Any]:
-    runs = {
-        b: read_records(runs_dir / f"{split}-{b}.jsonl")
-        for b in backends
-        if (runs_dir / f"{split}-{b}.jsonl").is_file()
-    }
+    runs, incomplete = {}, {}
+    for b in backends:
+        path = runs_dir / f"{split}-{b}.jsonl"
+        if not path.is_file():
+            continue
+        try:
+            runs[b] = read_records(path)
+        except ValueError as e:  # rows without a verdict: left out until rerun
+            incomplete[b] = str(e)
+    if not runs and incomplete:
+        raise ValueError("; ".join(incomplete.values()))
     if not runs:
         raise FileNotFoundError(f"no saved runs for split {split!r} in {runs_dir}")
     rows = {r["id"]: r for r in next(iter(runs.values()))}
@@ -286,6 +292,7 @@ def evaluate(
         "evaluated_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
         "bootstrap": {"resamples": N_RESAMPLES, "stratified_by_label": True, "level": 0.95},
         "subsets": {name: len(ids) for name, ids in subset_ids.items()},
+        "incomplete_runs_left_out": incomplete,
         "backends": {},
     }
     frozen = ROOT / "data" / "splits" / "FROZEN.json"

@@ -18,7 +18,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     run_p = sub.add_parser("run", help="run a guard backend over a split")
     run_p.add_argument("--backend", required=True, choices=BACKEND_NAMES)
-    run_p.add_argument("--split", default="dev", choices=["train", "dev", "test"])
+    run_p.add_argument("--split", default="dev", choices=["train", "dev", "test", "attacks"])
     run_p.add_argument("--limit", type=int, default=None, help="only the first N rows")
     run_p.add_argument("--concurrency", type=int, default=8)
     run_p.add_argument(
@@ -40,6 +40,8 @@ def main(argv: list[str] | None = None) -> int:
         "tune",
         help="pick thresholds and a cascade from the saved dev runs (no API calls)",
     )
+    sub.add_parser("attacks-build", help="Level 2 rewrites of unsafe test rows (no API calls)")
+    sub.add_parser("attacks-score", help="flip rates from the saved attack runs (no API calls)")
     sub.add_parser("relabel-sheet", help="blind sheet of the ambiguous dev rows")
     compare_p = sub.add_parser("relabel-compare", help="compare a filled relabel sheet")
     compare_p.add_argument("sheet", type=Path)
@@ -54,6 +56,24 @@ def main(argv: list[str] | None = None) -> int:
         from agentguard.eval.relabel import compare
 
         print(json.dumps(compare(args.sheet), indent=2))
+        return 0
+    if args.command == "attacks-build":
+        from collections import Counter
+
+        from agentguard.eval.attacks import build, write
+        from agentguard.eval.run import ATTACKS_PATH
+
+        rows = build()
+        write(rows)
+        print(f"{len(rows)} rewrites, each checked to rebuild its original, in {ATTACKS_PATH}")
+        print(dict(Counter(r["meta"]["family"] for r in rows)))
+        return 0
+    if args.command == "attacks-score":
+        from agentguard.eval.attacks import OUT_PATH, score
+
+        result = score()
+        print(json.dumps(result["backends"], indent=2))
+        print(f"full results: {OUT_PATH}")
         return 0
     if args.command == "evaluate":
         from agentguard.eval.evaluate import EVAL_DIR, evaluate, headline
