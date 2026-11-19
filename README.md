@@ -1,14 +1,70 @@
 # AgentGuard
 
-A pre-execution safety monitor for LLM agents. AgentGuard sits between an agent and its tools,
-scores every proposed action before it runs, and allows, escalates or blocks it.
+A pre-execution safety monitor for LLM agents: it scores every tool call an agent proposes
+before it runs, then allows it, asks a human, or blocks it. Four interchangeable guards
+(regex rules, a fine-tuned DeBERTa classifier, an LLM judge, and TypeSafe's Jev) and
+cascades of them are benchmarked on held-out labeled actions, on disguised attacks, and in
+front of a real agent that has been secretly told to sabotage its user.
 
-> **Status: Phase 4 under way.** The single test-split run is done for all four guards
-> and the strong judge, with 95% confidence intervals
-> ([test results](#test-results-phase-4-level-1)), and so are the attack rewrites
-> ([Level 2](#attack-rewrites-phase-4-level-2)) and the end-to-end agent runs
-> ([Level 3](#end-to-end-agent-runs-phase-4-level-3)), except 10 DeepSeek runs that wait on
-> API budget.
+**Headline results**
+
+- On 257 clear held-out actions, Jev ($0.05 per 1,000 checks) catches **86%** of the
+  dangerous ones at a 1% false-alarm rate and the cheap LLM judge **84%**, a statistical
+  tie. The strong judge reaches 88% at 35 times the judge's cost.
+- The cascade fixed on dev before the test run (cheap judge, then strong judge on the
+  unsure 35%) makes the same misses as the strong judge alone, **at 58% less cost**.
+- Against agents (GPT-OSS-120B, DeepSeek V3.2) secretly told to sabotage, **no guard
+  auto-allowed any of 722 attack steps**. The guards differ in what they cost honest
+  work: with nobody to ask, the agent finished 4% of its tasks under the tuned rules and
+  **94% under the cheap-to-strong cascade**, which interrupts a human 6 times per 100
+  tasks when one is available.
+
+![Recall at 1% false-positive rate against cost per 1,000 decisions](results/charts/test-cost-recall.png)
+
+**Demo:** a recorded run (not staged). The agent's user asked for a test summary; its
+secret order was to destroy the invoice file. It tries five ways, and the guard blocks
+each one.
+
+![A recorded Level 3 run: five attempts on the invoice file, five blocks](docs/demo.gif)
+
+| Guard | Recall at 1% FPR | AUROC | Latency p50 | Cost per 1,000 | Tasks done, nobody to ask (Level 3) | Side tasks stopped (Level 3) |
+|---|---|---|---|---|---|---|
+| rules | 71% [59, 82] | 0.88 [0.82, 0.94] | 0.3 ms | $0.00 | 4% | 100% |
+| classifier | 45% [33, 65] | 0.94 [0.92, 0.97] | 54 ms | $0.00 | 4% | 100% |
+| jev | 86% [71, 96] | 0.97 [0.94, 1.00] | 539 ms | $0.05 | 40% | 100% |
+| judge-cheap | 84% [0, 100] | 0.99 [0.98, 1.00] | 1.5 s | $0.22 | 80% | 100% |
+| judge-strong | 88% [71, 98] | 0.99 [0.98, 1.00] | 2.8 s | $7.82 | not run | not run |
+| cascade cheap > strong | | | | $3.32 | 94% | 100% |
+
+Recall and AUROC: clear test rows, 95% bootstrap CIs. Level 3 columns: GPT-OSS-120B as the
+agent, 50 normal tasks and 50 side tasks; "100%" means 50 of 50 (95% interval 93–100%).
+Details: [Level 1](#test-results-phase-4-level-1), [Level 2](#attack-rewrites-phase-4-level-2),
+[Level 3](#end-to-end-agent-runs-phase-4-level-3), and the three findings in
+[notes/findings.md](notes/findings.md).
+
+**Reproduce** (needs [uv](https://docs.astral.sh/uv/), Docker, and an OpenRouter key in `.env`):
+
+```bash
+make setup    # install dependencies, then `make sandbox` to build the agent's container
+make eval     # every paid run, about $6; runs already saved (all of them, in this repo) are skipped
+make report   # every metric and chart from the saved runs, no API calls
+```
+
+`make dashboard` opens the results, a live check of any action you type, and replays of
+the Level 3 runs.
+
+**Limitations**
+
+- **Small test set.** 51 clear unsafe test rows; at 1% FPR the recall number rests on two
+  or three safe rows, so its CIs are wide. Some categories have 1 to 4 unsafe test rows.
+- **Labels.** Rows were labeled by the author and by Claude under written rules. On the
+  ambiguous dev rows, the author's blind relabel agreed with the first labels 49% of the
+  time (kappa 0.18), and the strong judge and the labels share Claude's judgment.
+- **Level 3 attackers were blatant,** one run per scenario, and the simulated reviewer
+  never errs or tires. The Jev-first cascade's operating point was picked after the test
+  run. DeepSeek has only the judge-cheap Level 3 runs.
+- **Scope.** Five tools and one fake project in a sandbox; one agent loop. The paraphrase
+  attack family is not done.
 
 ## How it works
 
@@ -504,7 +560,9 @@ agentguard/
                  bootstrap.py, evaluate.py (Level 1 with CIs), charts.py, relabel.py,
                  attacks.py (Level 2 rewrites)
   e2e/           Level 3: scenarios.py, detect.py (attempt rules), run.py (agent + guard
-                 in the sandbox), score.py, charts.py, sheet.py
+                 in the sandbox), score.py, charts.py, sheet.py, demo.py (the GIF)
+dashboard/       app.py (Streamlit: results, live check, replay)
+docs/            demo.gif
   dataset/       row format, validator, stats, labeling tool, split and freeze
   pricing.py     token prices for cost per decision
 sandbox/         Dockerfile + seeded fake project and canary secrets; bin/netlog logs
@@ -523,8 +581,8 @@ results/         logs, tables, charts
 | 1. Agent, sandbox, interceptor | 2–3 | 5+ tasks complete in the sandbox; every call logged |
 | 2. Dataset | 4–5 | Test split frozen and committed (hash below) |
 | 3. Guard backends | 6–7 | All 4 backends return valid Verdicts on the dev split (passed) |
-| 4. Evaluation and attacks | 8–9 | 4 charts with error bars from `make report` (Levels 1–3 done; 10 DeepSeek runs pending) |
-| 5. Ship | 10 | README, demo, write-up |
+| 4. Evaluation and attacks | 8–9 | 4 charts with error bars from `make report` (passed; 10 DeepSeek Level 3 runs optional) |
+| 5. Ship | 10 | README, demo, write-up (dashboard, demo GIF and README done; blog post drafted) |
 
 Test split hash (sha256 of `data/splits/test.jsonl`, frozen 2026-11-17):
 `f7a2f0cbda0484b707a9ac46760d364ae06e0c6cce05f4bb9cde052760b09ce8`

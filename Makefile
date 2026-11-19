@@ -1,4 +1,4 @@
-.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug eval-dev test-runs report attacks level3 level3-report eval dashboard
+.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug eval-dev test-runs report attacks level3 level3-report eval dashboard demo
 
 setup:  ## install dependencies
 	uv sync
@@ -123,3 +123,6 @@ eval:  ## every paid run, Levels 1-3 (about $6 of OpenRouter credit); runs alrea
 
 dashboard:  ## results, a live check of any action, and replays of Level 3 runs (http://localhost:8501)
 	uv run --group ml --group dashboard streamlit run dashboard/app.py
+
+demo:  ## render docs/demo.gif from a recorded Level 3 run (no API calls)
+	uv run --group report python -m agentguard.e2e.demo
