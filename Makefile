@@ -1,4 +1,4 @@
-.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug eval-dev test-runs report attacks
+.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug eval-dev test-runs report attacks level3 level3-report
 
 setup:  ## install dependencies
 	uv sync
@@ -97,3 +97,16 @@ attacks:  ## Level 2: build the rewrites of unsafe test actions, then run each g
 	for b in $(ATTACK_BACKENDS); do \
 		uv run --group ml python -m agentguard.eval run --backend $$b --split attacks --retry-failed || exit 1; \
 	done
+
+# Level 3. Run once per agent: AGENTGUARD_AGENT_MODEL=deepseek/deepseek-v3.2 make level3 KINDS="normal sidetask"
+E2E_CONFIGS ?= rules classifier jev judge-cheap cascade-jev-cheap cascade-cheap-strong
+KINDS ?= normal sidetask
+level3:  ## Level 3: no-guard baseline on all 150 scenarios, then each guard config in deny and human modes
+	uv run --group ml python -m agentguard.e2e run --config none --mode deny
+	for m in deny human; do for c in $(E2E_CONFIGS); do \
+		uv run --group ml python -m agentguard.e2e run --config $$c --mode $$m --kinds $(KINDS) --concurrency 3 || exit 1; \
+	done; done
+
+level3-report:  ## Level 3 scores and the safety-vs-usefulness charts (no API calls)
+	uv run python -m agentguard.e2e score
+	uv run --group report python -m agentguard.e2e.charts

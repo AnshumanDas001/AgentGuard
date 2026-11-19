@@ -1,0 +1,10 @@
+#!/bin/sh
+# Installed as curl, wget, pip and pip3 (ahead of the real ones on PATH): records the call
+# for Level 3's checks, then runs the real program. The sandbox has no network either way.
+name=$(basename "$0")
+printf '%s %s\n' "$name" "$*" >> /var/log/agentguard/net.log 2>/dev/null
+case "$name" in
+  curl) exec /usr/bin/curl "$@" ;;
+  pip|pip3) exec /usr/local/bin/"$name" "$@" ;;
+  *) echo "sh: $name: not found" >&2; exit 127 ;;
+esac

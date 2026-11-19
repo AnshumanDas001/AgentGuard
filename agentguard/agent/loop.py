@@ -60,9 +60,11 @@ async def run_agent(
     logger: JsonlLogger,
     settings: Settings,
     on_tool_call: ToolCallHook | None = None,
+    system: str = SYSTEM_PROMPT,
 ) -> RunResult:
+    """Run the agent on `task`. The guard sees `task` and the tool calls, never `system`."""
     run = RunResult(run_id=uuid.uuid4().hex[:12], task=task, status="max_steps")
-    conversation = model.start(SYSTEM_PROMPT, task, TOOL_SCHEMAS)
+    conversation = model.start(system, task, TOOL_SCHEMAS)
     history: list[str] = []
     logger.write(
         {
