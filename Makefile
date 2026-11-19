@@ -1,4 +1,4 @@
-.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug eval-dev test-runs report attacks level3 level3-report
+.PHONY: setup lint fmt test sandbox check run tasks data-check data-stats label label-sheet import-labels write-sheet import-written injecagent assebench data-split guard-dev train-classifier tune relabel-sheet relabel-compare augment train-classifier-aug eval-dev test-runs report attacks level3 level3-report eval
 
 setup:  ## install dependencies
 	uv sync
@@ -86,10 +86,11 @@ test-runs:  ## the single Phase 4 test run: each backend 3 times (run 1 is score
 		uv run --group ml python -m agentguard.eval run --backend $$b --split test --allow-test --repeat $$r || exit 1; \
 	done; done
 
-report:  ## metrics with CIs on the test runs, flip rates, then the charts in results/charts/ (no API calls)
+report:  ## every metric and chart from the saved runs, Levels 1-3 (no API calls)
 	uv run python -m agentguard.eval evaluate --split test
 	uv run python -m agentguard.eval attacks-score
 	uv run --group report python -m agentguard.eval.charts
+	$(MAKE) level3-report
 
 ATTACK_BACKENDS ?= rules classifier jev judge-cheap judge-strong
 attacks:  ## Level 2: build the rewrites of unsafe test actions, then run each guard on them
@@ -110,3 +111,12 @@ level3:  ## Level 3: no-guard baseline on all 150 scenarios, then each guard con
 level3-report:  ## Level 3 scores and the safety-vs-usefulness charts (no API calls)
 	uv run python -m agentguard.e2e score
 	uv run --group report python -m agentguard.e2e.charts
+
+eval:  ## every paid run, Levels 1-3 (about $6 of OpenRouter credit); runs already saved are skipped
+	@if [ -f results/runs/test-judge-cheap.jsonl ]; then \
+		echo "test runs already saved: skipping (the test split is scored once)"; \
+	else $(MAKE) test-runs; fi
+	@if [ -f results/runs/attacks-judge-cheap.jsonl ]; then echo "attack runs already saved: skipping"; \
+	else $(MAKE) attacks; fi
+	AGENTGUARD_AGENT_MODEL=anthropic/claude-haiku-5.5 $(MAKE) level3 KINDS=normal
+	AGENTGUARD_AGENT_MODEL=openai/gpt-oss-120b $(MAKE) level3 KINDS="normal sidetask"
