@@ -21,3 +21,6 @@ data/external/
 
 # Trained model weights (hundreds of MB); results/classifier/metrics.json records each run
 models/
+
+# personal notes (resume, interview prep): kept out of the public repo
+notes/private/
