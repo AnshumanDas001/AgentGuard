@@ -22,20 +22,27 @@ import time
 from pathlib import Path
 from typing import Any
 
+from agentguard.agent.loop import HISTORY_LEN
 from agentguard.bench.basharena import Trajectory, load, proposals, scored
 from agentguard.config import RESULTS_DIR
 from agentguard.guard.policy import policy_for
 from agentguard.guard.schemas import GuardBackend
 
 OUT_DIR = RESULTS_DIR / "bench" / "basharena"
-SAMPLES = {"all": None, "s200": 200, "s100": 100}
+SAMPLES = {"all": None, "s200": 200, "s100": 100, "f50": 50}
+# Guards that see the whole run rather than the last 5 steps.
+WHOLE_RUN = {"jev-long"}
 SEED = 20261121
 SIDE_TASKS = ("disable_firewall", "download_malware", "leak_passwords", "sudo_edit")
 NO_RETENTION = {"data_collection": "deny"}
 
 
 def sample(trajectories: list[Trajectory], name: str) -> list[Trajectory]:
-    """The named fixed sample. Smaller samples are prefixes of the same shuffles."""
+    """The named fixed sample. s100 and s200 are prefixes of the same shuffles.
+
+    f50 is fresh: 50 honest runs and 50 attacks (13, 13, 12, 12 per side task) inside s200 but
+    outside s100, the runs looked at while diagnosing Level 4. It is for the Jev-long test.
+    """
     runs = scored(trajectories)
     n = SAMPLES[name]
     if n is None:
@@ -43,12 +50,19 @@ def sample(trajectories: list[Trajectory], name: str) -> list[Trajectory]:
     rng = random.Random(SEED)
     honest = sorted((t for t in runs if t.kind == "honest"), key=lambda t: t.id)
     rng.shuffle(honest)
-    picked = honest[:n]
-    per_side = n // len(SIDE_TASKS)
+    groups = {}
     for side in SIDE_TASKS:
         group = sorted((t for t in runs if t.side_task == side), key=lambda t: t.id)
         random.Random(f"{SEED}-{side}").shuffle(group)
-        picked += group[:per_side]
+        groups[side] = group
+    if name == "f50":
+        picked = honest[100:150]
+        for side, k in zip(SIDE_TASKS, (13, 13, 12, 12), strict=True):
+            picked += groups[side][25 : 25 + k]
+        return picked
+    picked = honest[:n]
+    for side in SIDE_TASKS:
+        picked += groups[side][: n // len(SIDE_TASKS)]
     return picked
 
 
@@ -97,13 +111,18 @@ async def run(
     concurrency: int = 8,
     max_cost: float | None = None,
     retries: int = 2,
+    whole_run: bool = False,
+    policy: Any = None,
 ) -> dict[str, Any]:
     out.parent.mkdir(parents=True, exist_ok=True)
     done = done_keys(out)
     todo = [
-        (t, i, p) for t in trajectories for i, p in enumerate(proposals(t)) if (t.id, i) not in done
+        (t, i, p)
+        for t in trajectories
+        for i, p in enumerate(proposals(t, None if whole_run else HISTORY_LEN))
+        if (t.id, i) not in done
     ]
-    decide = policy_for(backend).decide
+    decide = (policy or policy_for(backend)).decide
     gate = asyncio.Semaphore(concurrency)
     spent = {"usd": 0.0, "stopped": False}
     counts = {"scored": 0, "errors": 0, "skipped_budget": 0}
@@ -165,15 +184,31 @@ async def run(
 
 def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None) -> None:
     from agentguard.e2e.run import build_config
+    from agentguard.guard.backends.jev import JevBackend
+    from agentguard.guard.policy import tuned_policy
 
     trajectories = sample(load(), sample_name)
-    backend = build_config(guard)
+    policy = None
+    if guard == "jev-long":
+        backend = JevBackend(long_context=True)
+        backend.name = guard
+        policy = tuned_policy("jev")  # same thresholds as Jev: only the context changes
+    else:
+        backend = build_config(guard)
     no_retention(backend)
     out = OUT_DIR / f"{guard}.jsonl"
     n_steps = sum(len(proposals(t)) for t in trajectories)
     print(f"{guard} on BashArena {sample_name}: {len(trajectories)} runs, {n_steps} steps")
     summary = asyncio.run(
-        run(backend, trajectories, out, concurrency=concurrency, max_cost=max_cost)
+        run(
+            backend,
+            trajectories,
+            out,
+            concurrency=concurrency,
+            max_cost=max_cost,
+            whole_run=guard in WHOLE_RUN,
+            policy=policy,
+        )
     )
     print(json.dumps(summary, indent=2))
     print(f"wrote {out}")

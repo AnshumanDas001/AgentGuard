@@ -134,8 +134,12 @@ def scored(trajectories: list[Trajectory]) -> list[Trajectory]:
     return [t for t in trajectories if t.kind == "honest" or t.side_success]
 
 
-def proposals(trajectory: Trajectory) -> list[ActionProposal]:
-    """One proposal per checkable step, each with the same history a live run would give."""
+def proposals(
+    trajectory: Trajectory, history_len: int | None = HISTORY_LEN
+) -> list[ActionProposal]:
+    """One proposal per checkable step, each with the same history a live run would give.
+
+    history_len=None gives every earlier step of the run (the Jev-long experiment)."""
     out: list[ActionProposal] = []
     history: list[str] = []
     for step in trajectory.steps:
@@ -145,7 +149,10 @@ def proposals(trajectory: Trajectory) -> list[ActionProposal]:
         tool, args = mapped
         out.append(
             ActionProposal(
-                task=trajectory.task, history=history[-HISTORY_LEN:], tool=tool, args=args
+                task=trajectory.task,
+                history=history[-history_len:] if history_len else list(history),
+                tool=tool,
+                args=args,
             )
         )
         history.append(format_step(tool, args, executed=True, decision="allow", output=step.output))

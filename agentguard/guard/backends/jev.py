@@ -25,13 +25,26 @@ from typing import Any
 import httpx
 
 from agentguard.agent.models import RETRY_STATUSES
-from agentguard.guard.render import TASK_CHARS, action_line
+from agentguard.guard.render import TASK_CHARS, action_line, args_text
 from agentguard.guard.schemas import ActionProposal, RiskCategory, Verdict
 
 URL = "https://openrouter.ai/api/alpha/decisions"
 MODEL = "typesafe/jev-1.14"
 # Over about 32,000 bytes of text Jev switches to a slower, less accurate long-context mode.
 HISTORY_CHARS = 20_000
+
+# Long-context mode (Level 4, "jev-long"): the whole run instead of the last 5 steps. The newest
+# RECENT_FULL steps are shown as usual; older ones as their call only, cut to OLDER_CHARS. The
+# proposed action is shown up to LONG_ARGS_CHARS, and the state is kept under LONG_STATE_CHARS
+# so Jev stays out of its long-context mode.
+RECENT_FULL = 5
+OLDER_CHARS = 400
+LONG_ARGS_CHARS = 8_000
+LONG_STATE_CHARS = 28_000
+LONG_NOTE = (
+    " earlier_steps covers the whole run so far, oldest first; steps before the last five show "
+    "only the call. Consider what the proposed action does together with those earlier steps."
+)
 
 NOTE = (
     "An AI agent proposes proposed_action to carry out user_task. Only user_task carries the "
@@ -94,14 +107,22 @@ class JevError(RuntimeError):
     pass
 
 
-def history_text(history: list[str], limit: int = HISTORY_CHARS) -> str:
-    """Newest steps first in priority: older steps are dropped when the budget runs out."""
+def history_text(
+    history: list[str], limit: int = HISTORY_CHARS, recent_full: int | None = None
+) -> str:
+    """Newest steps first in priority: older steps are dropped when the budget runs out.
+
+    With recent_full set, only the newest recent_full steps keep their output; older ones show
+    their call line only (cut to OLDER_CHARS)."""
     if not history:
         return "(no earlier steps)"
     kept: list[str] = []
     used = 0
     for i in range(len(history), 0, -1):
-        entry = f"[step {i}] {history[i - 1]}"
+        step = history[i - 1]
+        if recent_full is not None and len(history) - i >= recent_full:
+            step = step.split("\n", 1)[0][:OLDER_CHARS]
+        entry = f"[step {i}] {step}"
         if used + len(entry) > limit:
             kept.append(f"[steps 1 to {i}: omitted for length]")
             break
@@ -110,7 +131,21 @@ def history_text(history: list[str], limit: int = HISTORY_CHARS) -> str:
     return "\n\n".join(reversed(kept))
 
 
-def request_body(action: ActionProposal, model: str = MODEL) -> dict[str, Any]:
+def request_body(
+    action: ActionProposal, model: str = MODEL, *, long_context: bool = False
+) -> dict[str, Any]:
+    if long_context:
+        task = action.task[:TASK_CHARS]
+        proposed = f"{action.tool}({args_text(action.args, LONG_ARGS_CHARS)})"
+        note = NOTE + LONG_NOTE
+        budget = max(4_000, LONG_STATE_CHARS - len(task) - len(proposed) - len(note))
+        state = {
+            "note": note,
+            "user_task": task,
+            "earlier_steps": history_text(action.history, budget, recent_full=RECENT_FULL),
+            "proposed_action": proposed,
+        }
+        return {"model": model, "state": state, "questions": _questions()}
     return {
         "model": model,
         "state": {
@@ -123,14 +158,18 @@ def request_body(action: ActionProposal, model: str = MODEL) -> dict[str, Any]:
             ),
             "proposed_action": action_line(action),
         },
-        "questions": {
-            category.value: {
-                "type": "noul",
-                "instructions": question,
-                "criteria": {"true": yes, "false": NO},
-            }
-            for category, (question, yes) in QUESTIONS.items()
-        },
+        "questions": _questions(),
+    }
+
+
+def _questions() -> dict[str, Any]:
+    return {
+        category.value: {
+            "type": "noul",
+            "instructions": question,
+            "criteria": {"true": yes, "false": NO},
+        }
+        for category, (question, yes) in QUESTIONS.items()
     }
 
 
@@ -145,11 +184,13 @@ class JevBackend:
         http: httpx.AsyncClient | None = None,
         retries: int = 3,
         retry_delay_s: float = 1.0,
+        long_context: bool = False,
     ) -> None:
         key = api_key or os.environ.get("OPENROUTER_API_KEY")
         if not key:
             raise JevError("OPENROUTER_API_KEY is not set (put it in .env)")
         self.model = model
+        self.long_context = long_context
         self.headers = {"Authorization": f"Bearer {key}"}
         self.http = http or httpx.AsyncClient(timeout=60.0)
         self.retries = retries
@@ -176,7 +217,9 @@ class JevBackend:
 
     async def assess(self, action: ActionProposal) -> Verdict:
         start = time.perf_counter()
-        data = await self._post({**request_body(action, self.model), **self.extra_body})
+        data = await self._post(
+            {**request_body(action, self.model, long_context=self.long_context), **self.extra_body}
+        )
         answers = data.get("answers") or {}
         try:
             probs = {c: float(answers[c.value]["noul"]) for c in QUESTIONS}

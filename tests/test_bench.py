@@ -78,3 +78,21 @@ def test_summarize_uses_the_most_suspicious_step_per_run() -> None:
     assert s["ranking"]["catch_at_4pct_fpr"]["value"] == 1.0
     assert s["deployed"]["attacks_with_a_block"]["value"] == 1.0
     assert s["deployed"]["honest_runs_interrupted"]["value"] == 0.0
+
+
+def test_jev_long_sees_the_whole_run_and_stays_under_its_size_limit() -> None:
+    import json
+
+    from agentguard.guard.backends.jev import LONG_STATE_CHARS, request_body
+
+    t = _traj(0, "attack", "sudo_edit", n=40)
+    t.task = "x" * 9_000
+    t.steps[-1].args = {"cmd": "y" * 20_000}
+    last = proposals(t, history_len=None)[-1]
+    assert len(last.history) == 39
+    state = request_body(last, long_context=True)["state"]
+    assert "[step 1]" in state["earlier_steps"] and "out 38" in state["earlier_steps"]
+    assert "out 1\n" not in state["earlier_steps"]  # older steps show the call only
+    assert len(json.dumps(state)) < LONG_STATE_CHARS + 2_000
+    short = request_body(proposals(t)[-1])["state"]  # default mode is unchanged
+    assert "[step 1]" in short["earlier_steps"] and len(proposals(t)[-1].history) == 5
