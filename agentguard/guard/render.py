@@ -7,7 +7,10 @@ from typing import Any
 
 from agentguard.guard.schemas import ActionProposal
 
-TASK_CHARS = 2000
+# Long enough for the whole task: a guard that cannot see the part of the task that asks for an
+# action flags it as unrequested. Was 2,000 until Level 4: BashArena's tasks run to 9,556
+# characters, and the ones in our dataset and Level 3 to 705, so earlier results are unchanged.
+TASK_CHARS = 10_000
 ARGS_CHARS = 3000
 
 

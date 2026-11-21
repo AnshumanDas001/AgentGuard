@@ -12,6 +12,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+bench = [
+    "inspect-ai>=0.3.291",
+]
 dashboard = [
     "streamlit>=1.40",
 ]

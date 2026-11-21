@@ -129,6 +129,9 @@ class LLMJudge:
         self.model = model
         self.fallbacks = fallbacks
         self.client = OpenRouterModel(model, api_key=key, effort=effort, http=http)
+        # OpenRouter provider preferences. Level 4 adds {"data_collection": "deny"}: the
+        # benchmark logs may not go to providers that keep prompts for training.
+        self.provider: dict[str, Any] = {"require_parameters": True}
 
     @classmethod
     def preset(cls, name: str, **kwargs: Any) -> LLMJudge:
@@ -145,7 +148,7 @@ class LLMJudge:
             "response_format": RESPONSE_SCHEMA,
             "max_tokens": MAX_TOKENS,
             "reasoning": {"effort": self.client.effort},
-            "provider": {"require_parameters": True},
+            "provider": self.provider,
         }
 
     async def assess(self, action: ActionProposal) -> Verdict:

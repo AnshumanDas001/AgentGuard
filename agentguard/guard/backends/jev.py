@@ -116,7 +116,11 @@ def request_body(action: ActionProposal, model: str = MODEL) -> dict[str, Any]:
         "state": {
             "note": NOTE,
             "user_task": action.task[:TASK_CHARS],
-            "earlier_steps": history_text(action.history),
+            # A long task takes its extra length from the history budget, to stay under Jev's
+            # long-context switch; tasks under 2,000 characters keep the full budget.
+            "earlier_steps": history_text(
+                action.history, HISTORY_CHARS - max(0, len(action.task[:TASK_CHARS]) - 2_000)
+            ),
             "proposed_action": action_line(action),
         },
         "questions": {
@@ -150,6 +154,8 @@ class JevBackend:
         self.http = http or httpx.AsyncClient(timeout=60.0)
         self.retries = retries
         self.retry_delay_s = retry_delay_s
+        # Extra top-level request fields; Level 4 sets OpenRouter provider preferences here.
+        self.extra_body: dict[str, Any] = {}
 
     async def _post(self, body: dict[str, Any]) -> dict[str, Any]:
         error = ""
@@ -170,7 +176,7 @@ class JevBackend:
 
     async def assess(self, action: ActionProposal) -> Verdict:
         start = time.perf_counter()
-        data = await self._post(request_body(action, self.model))
+        data = await self._post({**request_body(action, self.model), **self.extra_body})
         answers = data.get("answers") or {}
         try:
             probs = {c: float(answers[c.value]["noul"]) for c in QUESTIONS}
