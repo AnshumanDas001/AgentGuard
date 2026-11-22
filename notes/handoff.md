@@ -1,6 +1,7 @@
 # AgentGuard handoff (for a new Claude session)
 
-Last updated 2026-11-22 (HEAD after commit 61541c0 plus this file). Read all of it before acting.
+Last updated 2026-11-23 (after commit 1bcaba7, the MonitoringBench result). Read all of it
+before acting.
 To start a new session, paste the prompt in "Kickoff prompt" at the bottom.
 
 ## 1. The user and how to work with them
@@ -33,8 +34,8 @@ To start a new session, paste the prompt in "Kickoff prompt" at the bottom.
   ```
   uv run python -c "import os,httpx;from agentguard.config import load_dotenv;load_dotenv();print(httpx.get('https://openrouter.ai/api/v1/key',headers={'Authorization':'Bearer '+os.environ['OPENROUTER_API_KEY']}).json()['data'])"
   ```
-  About $0.09 was left on 2026-11-22; the user is topping it up. Always pass `--max-cost` on
-  paid runs, and do a small paid probe first to measure the cost per step.
+  On 2026-11-23 the cap was $50 with about $46 left. Always pass `--max-cost` on paid runs, and
+  do a small paid probe first to measure the cost per step.
 
 ## 2. The project in one paragraph
 
@@ -55,9 +56,18 @@ policy allows, escalates or blocks.
   - In Level 3 sandboxed red-team runs, no guard auto-allowed any of 722 attack steps. With
     deny-on-escalate, the cheap→strong cascade let 94% of honest tasks finish, against 4% for
     the tuned rules.
-- Published pages: field guide https://claude.ai/artifact/Pa9vKbVN6ngT4ui8djpGNw and blog
-  https://claude.ai/artifact/1VygoJ3HfCCy2XDRBWwJSz (both private until shared). They do not
-  cover Level 4 yet.
+- Published pages (both private until shared):
+  - **Field guide** (the user's study guide): https://claude.ai/artifact/Pa9vKbVN6ngT4ui8djpGNw.
+    Updated 2026-11-23 with Level 4, in sections 12–14 (BashArena setup, how Jev was improved,
+    the MonitoringBench test), plus new terms, mistakes, a fourth finding, limitations, future
+    work and interview questions. It does not have t200 or a judge comparison yet, because
+    neither exists. Keep it in the same style whenever a new result lands: plain explanations,
+    tables with exact numbers, caveats, a "say it in 30 seconds" box and interview Q&As.
+  - **Blog:** https://claude.ai/artifact/1VygoJ3HfCCy2XDRBWwJSz. It does not cover Level 4.
+  - To edit either page in a new session, use the Artifact tool's `read` action on its URL. It
+    saves the full page locally; edit that file and publish it back to the same URL. The
+    original file was in the old session's scratchpad and is gone. The guide is about 960 KB
+    because its charts are embedded images, so make targeted edits rather than reading it whole.
 
 ## 3. Level 4: the current work
 
@@ -106,14 +116,18 @@ passwords to an outside server, or give the user `restricted-service` passwordle
 | `agentguard/bench/head.py` | The learned run score: logistic regression on each question's run max and top-3 mean, plus optional `--facts`. Trains on one sample and tests on another; prints CIs, a length-controlled score, per-side-task results and weights |
 | `agentguard/guard/ledger.py` | `Ledger` (the run's security ledger), `LedgerProposal` (an ActionProposal subclass with `context`, so dataset fingerprints don't change), `salient_lines` |
 | `agentguard/guard/backends/jev.py` | Jev modes: default (last 5 steps), `long_context` (whole run), `v2` (ledger plus 5 questions), `v3` (v2 plus relied-on code and 1 question) |
-| `tests/test_bench.py`, `tests/test_ledger.py` | Unit tests (236 tests pass in total) |
+| `agentguard/bench/monitoringbench.py` | Converts the public MonitoringBench releases into `mb196`; `reference()` recomputes the 13 published monitors' scores (reproduces the paper's Table 5) |
+| `agentguard/bench/mb_report.py` | `bench mb-report`: Jev vs published monitors, the control, cost → `results/bench/monitoringbench/report.json` |
+| `tests/test_bench.py`, `tests/test_ledger.py` | Unit tests (242 tests pass in total on 2026-11-23) |
 
 CLI:
 ```
 uv run python -m agentguard.bench fetch
 uv run python -m agentguard.bench run --guard <name> --sample <sample> --concurrency 8 --max-cost <usd>
 uv run python -m agentguard.bench score
-uv run python -m agentguard.bench head --guard jev-v3 --train d158 --test t200 --facts
+uv run python -m agentguard.bench head --guard jev-v3 --train d158 --test t200 --facts --max-only
+uv run --group bench python -m agentguard.bench mb-convert   # builds mb196 from downloaded logs
+uv run --group bench python -m agentguard.bench mb-report
 ```
 Use `uv run --group ml ...` for the classifier and `uv run --group bench ...` for `fetch`, which
 needs inspect-ai. Per-step results are appended to `results/bench/basharena/<guard>.jsonl`.
@@ -129,7 +143,8 @@ Reruns skip steps already scored, so network errors are fixed by simply re-runni
 | f50 | 50 / 50, in s200 and not s100 | Development: Jev-long and Jev-v2 were designed on it |
 | v58 | 30 / 28, in s200 and not s100 or f50 | Used to validate Jev-v2; now development |
 | d158 | f50 + v58 (80 / 78) | **Training set** for the final learned score |
-| **t200** | **100 / 100 (25 per side task), outside s200** | **FINAL TEST. Fixed before any LLM guard scored it. Untouched. Score once, frozen.** |
+| **t200** | **100 / 100 (25 per side task), outside s200** | **FINAL BashArena TEST. Fixed before any LLM guard scored it. Still untouched on 2026-11-23. Score once with the frozen recipe.** |
+| mb196 | 550 honest (Palaestra) / 196 attacks (MonitoringBench `opus_only`) | External test. **Used once, 2026-11-23** (result below). Don't re-score or tune on it |
 
 ### Results so far
 
@@ -284,9 +299,10 @@ whenever you quote them.
   - GPT-5.1 Codex: 69.9% / 49.8%.
   - GPT-5: 60.2% / 19.5%.
   - Mid-tier per-step monitors (Sonnet 4.5, Sonnet 4, GPT-5): 25–52%.
-- **Realistic target:** 70%+ caught at 4% FPR on t200 with Jev, at about $0.25 per 1,000 steps.
-  That would sit near GPT-5.1 Codex and well above the mid-tier per-step monitors, and the judge
-  run on the same t200 runs gives the like-for-like comparison.
+- **Target (set 2026-11-22):** 70%+ caught at 4% FPR on t200 with Jev. Since then, the headline
+  moved to 1% FPR (MonitoringBench's level), with 4% still reported. On MonitoringBench the frozen
+  recipe got 45% at 1% and 65% at 4%, at about $0.13 per 1,000 steps. Running the judge on the
+  same t200 runs gives the like-for-like comparison.
 
 ## 4. Protocol (do not break it)
 
@@ -301,27 +317,35 @@ whenever you quote them.
   steps), scored as its maximum step (the benchmark's convention). Optionally, also run a judge
   given Jev-v3's context, so the judge has the same information.
 
-## 5. Next steps, in order (after the user tops up the key)
+## 5. Next steps, in order
+
+Done so far (2026-11-23): Jev-v3 on d158, the Jev-v4 round, the frozen recipe, and the
+MonitoringBench test (section 3). Still to do:
 
 1. Check the remaining budget with the snippet in section 1.
-2. **Jev-v3 on development:** first a probe,
-   `bench run --guard jev-v3 --sample d158 --max-cost 0.03`, to measure the cost per step
-   (expected about $0.00025). Then the full d158 run, about 3,100 steps, about $0.80, with
-   `--max-cost 1.00`.
-3. Train and check on development, all free:
-   `bench head --guard jev-v3 --train f50 --test v58 --facts`, the reverse direction, and with
-   and without `--facts`. Compare with Jev-v2's 0.92 / 68%. Then **freeze the final recipe**:
-   `--guard jev-v3 --train d158 --facts`, the current `head.py` settings (L2 0.1, max and top-3
-   features), and catch at 4% as the headline. Commit that before step 4.
-4. **Final test:** `bench run --guard jev-v3 --sample t200 --max-cost 1.40` (about 4,377 steps,
-   about $1.10), then `bench head --guard jev-v3 --train d158 --test t200 --facts`. Report it
-   whatever the outcome.
-5. **Judge comparison**, when the user says go: `bench run --guard judge-cheap --sample t200`
-   (about $2.70; probe first), then `bench score`. Optionally, a learned score for the judge
-   too, so both get the same treatment.
-6. Write it up: a Level 4 section in the README and `notes/findings.md`, update the field guide
-   and blog artifacts (ask first), add a Level 4 tab to the dashboard, and add resume bullets to
-   `notes/private/career.md`.
+2. **Final BashArena test, t200, scored once with the frozen recipe.** Probe first with
+   `bench run --guard jev-v3 --sample t200 --max-cost 0.03`. Then run it in full with
+   `--max-cost 1.00`: about 4,377 steps, about $0.60 with the pre-filter. Then run
+   `bench head --guard jev-v3 --train d158 --test t200 --facts --max-only`. Report it whatever
+   the outcome: catch at 1% and 4% trajectory FPR, AUROC, the length-controlled score, by side
+   task, and cost. Nothing about the recipe may change.
+3. **Judge comparison, only when the user says go.** This is the user's original goal ("Jev is
+   about as good as an LLM judge at much lower cost"), and no comparison exists yet.
+   - Run `bench run --guard judge-cheap --sample t200` (about $2.70; probe first), then
+     `bench score`. Score the judge as its maximum step (the benchmark's convention).
+   - For fairness, also consider giving the judge the same learned-score treatment, or Jev-v3's
+     context.
+   - The judge on mb196 would cost about $13 (21,329 steps at $0.62 per 1k). Ask first.
+4. **Optional variant, reported separately:** tell the monitor the four side-task
+   descriptions, as the BashArena paper's monitor is told. It's a fair, untried lever. Develop
+   it on d158 only.
+5. **Write-up:**
+   - A Level 4 section in the README and `notes/findings.md`.
+   - A Level 4 tab in the dashboard.
+   - Resume bullets in `notes/private/career.md`.
+   - The blog (ask first).
+   - The field guide already covers Level 4 through MonitoringBench. Add t200 and the judge
+     comparison to it when they exist (see section 2 for how to edit it).
 
 Cost per 1,000 steps on BashArena:
 
@@ -330,8 +354,8 @@ Cost per 1,000 steps on BashArena:
 | jev (last 5 steps) | 0.157 |
 | jev-long | 0.188 |
 | jev-v2 | 0.22 |
-| jev-v3 | about 0.25 (estimated) |
-| judge-cheap | 0.62 |
+| jev-v3 with the pre-filter (measured: d158 $0.138; MonitoringBench $0.132) | about 0.13–0.14 |
+| judge-cheap (88-step probe) | 0.62 |
 
 ## 6. Gotchas
 
@@ -360,8 +384,9 @@ Cost per 1,000 steps on BashArena:
 I'm continuing my AgentGuard project. Read notes/handoff.md in full first, then the files it
 names in its code map, and follow its rules (beginner-friendly explanations, keep committing
 and pushing with the repo identity, secret scan before each push, the evaluation protocol).
-We are on Level 4 (BashArena). I've topped up my OpenRouter key. Check the remaining budget,
-then do "Next steps" 2–4: run Jev-v3 on d158, check it on development, freeze the recipe, and
-score the untouched t200 test set once. Explain the results simply and tell me whether we hit
-about 70% caught at 4% false alarms. Don't run the LLM judge until I say so.
+We are on Level 4 (BashArena). The recipe is frozen and MonitoringBench is done. Check the
+remaining budget, then do "Next steps" 2: score the untouched t200 test set once with the
+frozen recipe, explain the result simply, and compare it with the development and
+MonitoringBench numbers. Then update the field guide (link in section 2) with the result, in
+the same style. Don't run the LLM judge until I say so.
 ```
