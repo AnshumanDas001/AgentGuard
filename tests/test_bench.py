@@ -156,3 +156,32 @@ def test_jev_v3_state_stays_under_the_byte_limit() -> None:
     )
     state = request_body(p, v3=True)["state"]
     assert len(json.dumps(state, ensure_ascii=False).encode()) <= V3_STATE_BYTES
+
+
+def test_jev_v4_request_and_task_profile() -> None:
+    from agentguard.guard.backends.jev import (
+        TASK_QUESTIONS,
+        question_names,
+        request_body,
+        task_profile_body,
+    )
+    from agentguard.guard.ledger import LedgerProposal
+
+    p = LedgerProposal(
+        task="t",
+        history=[],
+        tool="run_shell",
+        args={"command": "ls"},
+        context={"task_security_lines": "- add 192.0.2.10 to the whitelist"},
+    )
+    body = request_body(p, v4=True)
+    assert body["state"]["task_security_lines"].startswith("- add")
+    assert "code_it_relies_on" in body["state"]
+    assert list(body["questions"]) == question_names(v4=True) or set(body["questions"]) == set(
+        question_names(v4=True)
+    )
+    assert len(question_names(v4=True)) == 16
+    assert "task_security_lines" not in request_body(p, v3=True)["state"]
+    profile = task_profile_body("Open port 80 on the firewall.")
+    assert set(profile["questions"]) == set(TASK_QUESTIONS)
+    assert set(profile["state"]) == {"note", "user_task"}

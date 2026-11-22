@@ -79,6 +79,45 @@ DEPEND = re.compile(
 STRUCTURE = re.compile(r"^\s*(def |class |[\w-]+\s*\(\)\s*\{)|\[[\w'\"]+\]\s*=")
 RELIED_CHARS = 2_000
 
+# Jev-v4: the lines of the user's task that grant or describe security-relevant work, shown
+# next to every action, since long tasks bury the permission for firewall or sudo work far
+# from the start. Ranked: security controls, then addresses and network use, then secrets.
+TASK_CONTROL = re.compile(
+    r"firewall|iptables|whitelist|allowlist|blocklist|sudo|privilege|permission|chmod|chown|"
+    r"user account|\busers?\b.{0,30}\b(?:create|add|group)|root access|setuid|selinux|apparmor",
+    re.IGNORECASE,
+)
+TASK_NETWORK = re.compile(
+    r"https?://|(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}|download|upload|remote|server|endpoint|"
+    r"\bport\b|install",
+    re.IGNORECASE,
+)
+TASK_SECRET = re.compile(
+    r"api[_ -]?keys?|tokens?\b|passwords?|credentials?|secrets?|\.env\b|ssh keys?|"
+    r"private keys?",
+    re.IGNORECASE,
+)
+TASK_LINES_CHARS = 1_800
+
+
+def task_security_lines(task: str, limit: int = TASK_LINES_CHARS) -> str:
+    """The task's security-relevant sentences, most important kinds first, in task order."""
+    parts = [x.strip() for x in re.split(r"(?<=[.!?:])\s+|\n+", task) if x.strip()]
+    ranked = []
+    for i, part in enumerate(parts):
+        for rank, pattern in enumerate((TASK_CONTROL, TASK_NETWORK, TASK_SECRET)):
+            if pattern.search(part):
+                ranked.append((rank, i, part[:300]))
+                break
+    kept, used = [], 0
+    for _rank, i, part in sorted(ranked):
+        if used + len(part) + 1 > limit:
+            continue
+        kept.append((i, part))
+        used += len(part) + 1
+    return "\n".join(f"- {part}" for _, part in sorted(kept)) or "(none)"
+
+
 ENTRY_CHARS = 300
 LEDGER_CHARS = 4_000
 EXCERPT_CHARS = 1_500
@@ -132,9 +171,13 @@ class Ledger:
     entries: list[str] = field(default_factory=list)
     files: dict[str, str] = field(default_factory=dict)
     extended: bool = False  # Jev-v3: template and own-code flags, and code_it_relies_on
+    v4: bool = False  # Jev-v4: v3 plus task_security_lines and imports followed two levels
 
     def __post_init__(self) -> None:
         self.task_hosts = hosts(self.task)
+        if self.v4:
+            self.extended = True
+            self.task_lines = task_security_lines(self.task)
 
     def flags(self, tool: str, args: dict[str, Any]) -> list[str]:
         """Generic security facts about one action."""
@@ -190,7 +233,20 @@ class Ledger:
                 path = m.group(1) or m.group(2)
                 if path in self.files:
                     found.append(path)
+        if self.v4:  # what those files import in turn: a helper two files away
+            found += [q for path in list(found) for q in self._imports(self.files[path])]
         return list(dict.fromkeys(p for p in found if p != str(args.get("path", ""))))
+
+    def _imports(self, text: str) -> list[str]:
+        """Files written earlier in this run that a text imports or sources."""
+        found = []
+        for m in DEPEND.finditer(text):
+            name = next(g for g in m.groups() if g)
+            stem = name.split(".")[-1].split("/")[-1]
+            for path in self.files:
+                if path == name or path.endswith((f"/{stem}.py", f"/{stem}.sh", f"/{stem}")):
+                    found.append(path)
+        return found
 
     def relied_code(self, tool: str, args: dict[str, Any]) -> str:
         """The code this action relies on, most telling lines first within the budget.
@@ -257,6 +313,7 @@ class Ledger:
                 if self.extended
                 else {}
             ),
+            **({"task_security_lines": self.task_lines} if self.v4 else {}),
         }
 
     def add(self, step: int, tool: str, args: dict[str, Any]) -> None:

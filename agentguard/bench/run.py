@@ -31,11 +31,12 @@ from agentguard.guard.schemas import GuardBackend
 OUT_DIR = RESULTS_DIR / "bench" / "basharena"
 SAMPLES = {"all": None, "s200": 200, "s100": 100, "f50": 50, "v58": 58, "d158": 158, "t200": 200}
 # Guards that see the whole run rather than the last 5 steps.
-WHOLE_RUN = {"jev-long", "jev-v2", "jev-v3"}
-WITH_LEDGER = {"jev-v2", "jev-v3"}
-EXTENDED = {"jev-v3"}
+WHOLE_RUN = {"jev-long", "jev-v2", "jev-v3", "jev-v4"}
+WITH_LEDGER = {"jev-v2", "jev-v3", "jev-v4"}
+EXTENDED = {"jev-v3", "jev-v4"}
+V4 = {"jev-v4"}
 # Steps that ledger.needs_check clears are recorded as all-zero answers, with no model call.
-PREFILTERED = {"jev-v3"}
+PREFILTERED = {"jev-v3", "jev-v4"}
 SEED = 20261121
 SIDE_TASKS = ("disable_firewall", "download_malware", "leak_passwords", "sudo_edit")
 NO_RETENTION = {"data_collection": "deny"}
@@ -137,6 +138,7 @@ async def run(
     extended: bool = False,
     policy: Any = None,
     prefilter: list[str] | None = None,
+    v4: bool = False,
 ) -> dict[str, Any]:
     """prefilter: the guard's answer names; steps ledger.needs_check clears get zero answers
     and no model call."""
@@ -148,7 +150,9 @@ async def run(
         (t, i, p)
         for t in trajectories
         for i, p in enumerate(
-            proposals(t, None if whole_run else HISTORY_LEN, ledger=ledger, extended=extended)
+            proposals(
+                t, None if whole_run else HISTORY_LEN, ledger=ledger, extended=extended, v4=v4
+            )
         )
         if (t.id, i) not in done
     ]
@@ -220,6 +224,42 @@ async def run(
     }
 
 
+def profiled(out: Path) -> set[str]:
+    if not out.is_file():
+        return set()
+    with out.open(encoding="utf-8") as f:
+        return {json.loads(line)["traj"] for line in f if line.strip()}
+
+
+async def task_profiles(
+    backend: Any, trajectories: list[Trajectory], out: Path, done: set[str], concurrency: int = 8
+) -> dict[str, Any]:
+    """Jev-v4's once-per-run task profile, one line per run in `out` (resumable)."""
+    todo = [t for t in trajectories if t.id not in done]
+    gate = asyncio.Semaphore(concurrency)
+    spent = {"usd": 0.0, "errors": 0}
+    with out.open("a", encoding="utf-8") as f:
+
+        async def one(t: Trajectory) -> None:
+            async with gate:
+                try:
+                    answers, cost = await backend.task_profile(t.task)
+                except Exception:  # left out of the file, so a rerun asks again
+                    spent["errors"] += 1
+                    return
+                spent["usd"] += cost
+                f.write(json.dumps({"traj": t.id, "answers": answers, "cost_usd": cost}) + "\n")
+                f.flush()
+
+        await asyncio.gather(*(one(t) for t in todo))
+    return {
+        "profiled": len(todo) - spent["errors"],
+        "errors": spent["errors"],
+        "already_done": len(done),
+        "cost_usd": round(spent["usd"], 4),
+    }
+
+
 def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None) -> None:
     from agentguard.e2e.run import build_config
     from agentguard.guard.backends.jev import JevBackend, question_names
@@ -227,8 +267,10 @@ def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None)
 
     trajectories = sample(load(), sample_name)
     policy = None
-    if guard in ("jev-long", "jev-v2", "jev-v3"):
-        backend = JevBackend(long_context=True, v2=guard == "jev-v2", v3=guard == "jev-v3")
+    if guard in ("jev-long", "jev-v2", "jev-v3", "jev-v4"):
+        backend = JevBackend(
+            long_context=True, v2=guard == "jev-v2", v3=guard == "jev-v3", v4=guard == "jev-v4"
+        )
         backend.name = guard
         policy = tuned_policy("jev")  # same thresholds as Jev: only the context changes
     else:
@@ -237,19 +279,31 @@ def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None)
     out = OUT_DIR / f"{guard}.jsonl"
     n_steps = sum(len(proposals(t)) for t in trajectories)
     print(f"{guard} on BashArena {sample_name}: {len(trajectories)} runs, {n_steps} steps")
-    summary = asyncio.run(
-        run(
+
+    async def go() -> dict[str, Any]:
+        budget = max_cost
+        if guard in V4:
+            path = OUT_DIR / f"{guard}-task.jsonl"
+            profile = await task_profiles(backend, trajectories, path, profiled(path))
+            print("task profiles:", profile)
+            if budget is not None:
+                budget -= profile["cost_usd"]
+        return await run(
             backend,
             trajectories,
             out,
             concurrency=concurrency,
-            max_cost=max_cost,
+            max_cost=budget,
             whole_run=guard in WHOLE_RUN,
             ledger=guard in WITH_LEDGER,
             extended=guard in EXTENDED,
             policy=policy,
-            prefilter=question_names(v2=True, v3=True) if guard in PREFILTERED else None,
+            prefilter=question_names(v2=True, v3=True, v4=guard in V4)
+            if guard in PREFILTERED
+            else None,
+            v4=guard in V4,
         )
-    )
+
+    summary = asyncio.run(go())
     print(json.dumps(summary, indent=2))
     print(f"wrote {out}")

@@ -45,6 +45,8 @@ def main(argv: list[str] | None = None) -> int:
     head_p.add_argument("--train", default="f50", choices=list(SAMPLES))
     head_p.add_argument("--test", default="v58", choices=list(SAMPLES))
     head_p.add_argument("--facts", action="store_true", help="add the two run-level ledger facts")
+    head_p.add_argument("--max-only", action="store_true", help="each question's run max only")
+    head_p.add_argument("--profile", action="store_true", help="add Jev-v4 task-profile features")
     args = parser.parse_args(argv)
 
     if args.command == "fetch":
@@ -52,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "head":
         from agentguard.bench.head import main as head_main
 
-        head_main(args.guard, args.train, args.test, args.facts)
+        head_main(args.guard, args.train, args.test, args.facts, args.max_only, args.profile)
         return 0
     if args.command == "score":
         from agentguard.bench.score import main as score_main

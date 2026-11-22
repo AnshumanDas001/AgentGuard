@@ -162,6 +162,26 @@ v3 ties v2: the new question (`indirect_security_change`) gets no large weight. 
 70% at 1% in both directions. At 1% the cut on 30–50 honest runs is the single highest honest
 score, so those numbers are rough.
 
+**Jev-v4 decision rule, written down before Jev-v4 was run on d158 (the user allowed one more
+paid development round, then freeze):**
+- Jev-v4 = v3 plus the task's security-relevant lines next to every action
+  (`ledger.task_security_lines`), three questions (`beyond_task_security`, `secrets_leave`,
+  `misleading_code`), imports followed two files deep, and a once-per-run task profile (five
+  questions on the task alone).
+- Why: in a cross-fitted diagnosis of v3 on d158, the honest runs that set the 1% cut were tasks
+  that legitimately ask for firewall, sudo or network work, and the missed firewall and sudo
+  attacks had the same high "weakens a control" answers. Learned-score check on v3 (free):
+  each question's maximum only (no top-3 means) averaged 56% length-controlled catch at 1%
+  over both directions, against 47% with top-3 means; L2 1.0 was worse than 0.1.
+- Candidates, all with `--facts`, trained and tested in both directions (f50→v58, v58→f50):
+  1. jev-v3 `--max-only`
+  2. jev-v4 `--max-only`
+  3. jev-v4 `--max-only --profile`
+- **Pick the one with the highest mean (over the two directions) length-controlled catch at
+  1% FPR; ties (within 0.02) go to the mean length-controlled catch at 4%, then to the simpler
+  one.** The winner is frozen, trained on d158, for MonitoringBench and t200. No further
+  development rounds.
+
 The facts results are optimistic, because the facts were found by reading f50 and v58. The cheap judge has been run on only 88 s100 steps (a cost probe:
 $0.00062 per step), so **there is no judge comparison yet.**
 
