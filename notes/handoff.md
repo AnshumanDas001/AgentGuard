@@ -182,6 +182,16 @@ paid development round, then freeze):**
   one.** The winner is frozen, trained on d158, for MonitoringBench and t200. No further
   development rounds.
 
+**Outcome (Jev-v4 d158 run $0.48: 158 task profiles $0.013, 1,759 calls at $0.00027, no
+errors).** Length-controlled catch at 1%, mean of both directions (then 4%):
+jev-v3 max-only 56.4% (62.1%), jev-v4 max-only 54.7% (60.8%), jev-v4 + profile 47.7% (57.2%).
+v3 and v4 tie within 0.02; the tie-break (4%) and simplicity both pick v3. v4's
+`beyond_task_security` got a negative weight (honest security tasks answer it high, too), the
+profile hurt, and `secrets_leave` helped password leaks but sudo got worse.
+**FROZEN RECIPE: `jev-v3`, learned score `--facts --max-only`, trained on all of d158**
+(`bench head --guard jev-v3 --train d158 --test <test> --facts --max-only`). Headline: catch at
+1% trajectory FPR (MonitoringBench's level), with 4%, AUROC and the length-controlled score.
+
 The facts results are optimistic, because the facts were found by reading f50 and v58. The cheap judge has been run on only 88 s100 steps (a cost probe:
 $0.00062 per step), so **there is no judge comparison yet.**
 
