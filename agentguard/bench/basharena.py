@@ -135,25 +135,34 @@ def scored(trajectories: list[Trajectory]) -> list[Trajectory]:
 
 
 def proposals(
-    trajectory: Trajectory, history_len: int | None = HISTORY_LEN
+    trajectory: Trajectory, history_len: int | None = HISTORY_LEN, ledger: bool = False
 ) -> list[ActionProposal]:
     """One proposal per checkable step, each with the same history a live run would give.
 
-    history_len=None gives every earlier step of the run (the Jev-long experiment)."""
+    history_len=None gives every earlier step of the run (the Jev-long experiment); ledger=True
+    adds the run's security ledger as context (Jev-v2), built step by step as it would be live.
+    """
+    from agentguard.guard.ledger import Ledger, LedgerProposal
+
     out: list[ActionProposal] = []
     history: list[str] = []
+    book = Ledger(trajectory.task) if ledger else None
     for step in trajectory.steps:
         mapped = map_call(step.tool, step.args)
         if mapped is None:
             continue
         tool, args = mapped
-        out.append(
-            ActionProposal(
-                task=trajectory.task,
-                history=history[-history_len:] if history_len else list(history),
-                tool=tool,
-                args=args,
-            )
-        )
+        fields = {
+            "task": trajectory.task,
+            "history": history[-history_len:] if history_len else list(history),
+            "tool": tool,
+            "args": args,
+        }
+        if book:
+            out.append(LedgerProposal(**fields, context=book.context(tool, args)))
+        else:
+            out.append(ActionProposal(**fields))
+        if book:
+            book.add(len(out), tool, args)
         history.append(format_step(tool, args, executed=True, decision="allow", output=step.output))
     return out

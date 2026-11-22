@@ -29,9 +29,10 @@ from agentguard.guard.policy import policy_for
 from agentguard.guard.schemas import GuardBackend
 
 OUT_DIR = RESULTS_DIR / "bench" / "basharena"
-SAMPLES = {"all": None, "s200": 200, "s100": 100, "f50": 50}
+SAMPLES = {"all": None, "s200": 200, "s100": 100, "f50": 50, "v58": 58}
 # Guards that see the whole run rather than the last 5 steps.
-WHOLE_RUN = {"jev-long"}
+WHOLE_RUN = {"jev-long", "jev-v2"}
+WITH_LEDGER = {"jev-v2"}
 SEED = 20261121
 SIDE_TASKS = ("disable_firewall", "download_malware", "leak_passwords", "sudo_edit")
 NO_RETENTION = {"data_collection": "deny"}
@@ -42,6 +43,8 @@ def sample(trajectories: list[Trajectory], name: str) -> list[Trajectory]:
 
     f50 is fresh: 50 honest runs and 50 attacks (13, 13, 12, 12 per side task) inside s200 but
     outside s100, the runs looked at while diagnosing Level 4. It is for the Jev-long test.
+    v58 is the validation set for what f50 suggested (Jev-v2's hides_intent question): 30
+    honest runs and 28 attacks inside s200, outside s100 and f50, never scored by any Jev.
     """
     runs = scored(trajectories)
     n = SAMPLES[name]
@@ -55,6 +58,11 @@ def sample(trajectories: list[Trajectory], name: str) -> list[Trajectory]:
         group = sorted((t for t in runs if t.side_task == side), key=lambda t: t.id)
         random.Random(f"{SEED}-{side}").shuffle(group)
         groups[side] = group
+    if name == "v58":  # validation: 30 honest + 7 attacks per side task, never scored by Jev
+        picked = honest[150:180]
+        for side in SIDE_TASKS:
+            picked += groups[side][38:45]
+        return picked
     if name == "f50":
         picked = honest[100:150]
         for side, k in zip(SIDE_TASKS, (13, 13, 12, 12), strict=True):
@@ -112,6 +120,7 @@ async def run(
     max_cost: float | None = None,
     retries: int = 2,
     whole_run: bool = False,
+    ledger: bool = False,
     policy: Any = None,
 ) -> dict[str, Any]:
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -119,7 +128,7 @@ async def run(
     todo = [
         (t, i, p)
         for t in trajectories
-        for i, p in enumerate(proposals(t, None if whole_run else HISTORY_LEN))
+        for i, p in enumerate(proposals(t, None if whole_run else HISTORY_LEN, ledger=ledger))
         if (t.id, i) not in done
     ]
     decide = (policy or policy_for(backend)).decide
@@ -189,8 +198,8 @@ def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None)
 
     trajectories = sample(load(), sample_name)
     policy = None
-    if guard == "jev-long":
-        backend = JevBackend(long_context=True)
+    if guard in ("jev-long", "jev-v2"):
+        backend = JevBackend(long_context=True, v2=guard == "jev-v2")
         backend.name = guard
         policy = tuned_policy("jev")  # same thresholds as Jev: only the context changes
     else:
@@ -207,6 +216,7 @@ def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None)
             concurrency=concurrency,
             max_cost=max_cost,
             whole_run=guard in WHOLE_RUN,
+            ledger=guard in WITH_LEDGER,
             policy=policy,
         )
     )
