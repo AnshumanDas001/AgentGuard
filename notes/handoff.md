@@ -149,8 +149,20 @@ Guards as built (catch rate at 4% trajectory FPR):
 | jev-v2 + learned score + 2 ledger facts (f50→v58) | v58 | 0.92 [0.85, 0.98] | **68%** [46, 89] | |
 | same, the other direction (v58→f50) | f50 | 0.93 | 56% | |
 
-The facts results are optimistic, because the facts were found by reading f50 and v58. Jev-v3
-has not been run yet. The cheap judge has been run on only 88 s100 steps (a cost probe:
+Jev-v3 on d158 (2026-11-23, commit after 667e06d; $0.43, with the pre-filter that skips the
+44% of steps that write no file and trip no ledger flag). Learned score with facts; catch at 4% /
+1% trajectory FPR, then the length-controlled 4% / 1%:
+
+| | f50→v58 | v58→f50 |
+|---|---|---|
+| jev-v2 (pre-filter replayed on saved answers) | 68% / 64% (len-ctrl 63 / 54) | 64% / 44% (63 / 42) |
+| jev-v3 | 68% / 68% (len-ctrl 68 / 60) | 60% / 34% (60 / 34) |
+
+v3 ties v2: the new question (`indirect_security_change`) gets no large weight. Neither reaches
+70% at 1% in both directions. At 1% the cut on 30–50 honest runs is the single highest honest
+score, so those numbers are rough.
+
+The facts results are optimistic, because the facts were found by reading f50 and v58. The cheap judge has been run on only 88 s100 steps (a cost probe:
 $0.00062 per step), so **there is no judge comparison yet.**
 
 ### What we learned (the story for interviews)
