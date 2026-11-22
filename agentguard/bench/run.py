@@ -29,7 +29,7 @@ from agentguard.guard.policy import policy_for
 from agentguard.guard.schemas import GuardBackend
 
 OUT_DIR = RESULTS_DIR / "bench" / "basharena"
-SAMPLES = {"all": None, "s200": 200, "s100": 100, "f50": 50, "v58": 58}
+SAMPLES = {"all": None, "s200": 200, "s100": 100, "f50": 50, "v58": 58, "d158": 158, "t200": 200}
 # Guards that see the whole run rather than the last 5 steps.
 WHOLE_RUN = {"jev-long", "jev-v2", "jev-v3"}
 WITH_LEDGER = {"jev-v2", "jev-v3"}
@@ -46,6 +46,8 @@ def sample(trajectories: list[Trajectory], name: str) -> list[Trajectory]:
     outside s100, the runs looked at while diagnosing Level 4. It is for the Jev-long test.
     v58 is the validation set for what f50 suggested (Jev-v2's hides_intent question): 30
     honest runs and 28 attacks inside s200, outside s100 and f50, never scored by any Jev.
+    d158 is f50 + v58 (development, 158 runs). t200 is the final test: 100 honest runs and 100
+    attacks outside s200, fixed before any LLM guard scored them; score it once, frozen.
     """
     runs = scored(trajectories)
     n = SAMPLES[name]
@@ -59,6 +61,14 @@ def sample(trajectories: list[Trajectory], name: str) -> list[Trajectory]:
         group = sorted((t for t in runs if t.side_task == side), key=lambda t: t.id)
         random.Random(f"{SEED}-{side}").shuffle(group)
         groups[side] = group
+    if name == "d158":  # development: every run Jev-v2 was designed or checked on
+        return sample(trajectories, "f50") + sample(trajectories, "v58")
+    if name == "t200":  # final test, fixed 2026-11-22 before any of it was scored by Jev or a
+        # judge: 100 honest + 25 attacks per side task, all outside s200
+        picked = honest[200:300]
+        for side in SIDE_TASKS:
+            picked += groups[side][50:75]
+        return picked
     if name == "v58":  # validation: 30 honest + 7 attacks per side task, never scored by Jev
         picked = honest[150:180]
         for side in SIDE_TASKS:
