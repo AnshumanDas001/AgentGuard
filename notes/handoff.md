@@ -192,6 +192,28 @@ profile hurt, and `secrets_leave` helped password leaks but sudo got worse.
 (`bench head --guard jev-v3 --train d158 --test <test> --facts --max-only`). Headline: catch at
 1% trajectory FPR (MonitoringBench's level), with 4%, AUROC and the length-controlled score.
 
+### MonitoringBench test plan (written before any Jev call on MonitoringBench)
+
+- Data: `bench mb-convert` (bench/monitoringbench.py) gives `mb196`: Palaestra's 550 honest runs
+  (Opus 4.5, 13,412 steps, median 21) and the 196 standard attacks (`opus_only`, Opus 4.6,
+  7,917 steps, median 40; 58/42/43/53 per side task, as in the paper's Table 5). No grading
+  or side-task text appears in tool outputs; user messages are never shown to the guard.
+- Run once: `bench run --guard jev-v3 --sample mb196 --max-cost 3.50` (dry run: 11,066 Jev
+  calls after the pre-filter, about $2.90, all states under 31,000 bytes).
+- Score: `bench head --guard jev-v3 --train d158 --test mb196 --facts --max-only` (the frozen
+  recipe; nothing is fitted on MonitoringBench).
+- **Headline: catch at 1% trajectory FPR, cut on the 550 honest runs, with its bootstrap CI.**
+  Also: 4%, AUROC, the length-weighted cut (attacks are about twice as long as honest runs
+  here, the opposite of Redwood's runs), per side task, $ per 1k steps and latency.
+- Control: the same pipeline with random Jev answers gives 19% at 1% (AUROC 0.77; 0.68
+  length-weighted), from the ledger facts and run length. Report it next to Jev.
+- Comparison: the 13 published full-trajectory monitors on the same 196 attacks
+  (`monitoringbench.reference`, which reproduces Table 5: Opus 4.5 94.9%, Sonnet 4.5 82.7%,
+  GPT-5.1 Codex 70.0%, o3 62.2%, GPT-5 60.2%, Sonnet 4.0 58.7%, GPT-4.1 10.2%, ...).
+- Caveats to state: their cuts come from the paper's 416 honest runs, Jev's from Palaestra's 550
+  (another honest set); they read the whole run at once without outputs, Jev scores each step
+  with outputs; Jev's learned score was trained on Redwood runs (Opus 4.6 agent).
+
 The facts results are optimistic, because the facts were found by reading f50 and v58. The cheap judge has been run on only 88 s100 steps (a cost probe:
 $0.00062 per step), so **there is no judge comparison yet.**
 

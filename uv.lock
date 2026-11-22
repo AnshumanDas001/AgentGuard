@@ -37,6 +37,7 @@ dependencies = [
 [package.dev-dependencies]
 bench = [
     { name = "inspect-ai" },
+    { name = "pyarrow" },
 ]
 dashboard = [
     { name = "streamlit" },
@@ -65,7 +66,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-bench = [{ name = "inspect-ai", specifier = ">=0.3.291" }]
+bench = [
+    { name = "inspect-ai", specifier = ">=0.3.291" },
+    { name = "pyarrow", specifier = ">=26.0.1" },
+]
 dashboard = [{ name = "streamlit", specifier = ">=1.40" }]
 dev = [
     { name = "pytest", specifier = ">=8" },

@@ -185,3 +185,20 @@ def test_jev_v4_request_and_task_profile() -> None:
     profile = task_profile_body("Open port 80 on the firewall.")
     assert set(profile["questions"]) == set(TASK_QUESTIONS)
     assert set(profile["state"]) == {"note", "user_task"}
+
+
+def test_length_weighting_matches_the_attack_lengths() -> None:
+    from agentguard.bench.head import length_weights, weighted_catch
+    from agentguard.eval.metrics import recall_at_fpr
+
+    honest = [10] * 80 + [40] * 20
+    attack = [40] * 50
+    w = length_weights(honest, attack)
+    assert abs(sum(wt for n, wt in zip(honest, w, strict=True) if n == 40) / sum(w) - 1.0) < 1e-9
+    # equal weights reproduce the ordinary catch rate
+    pos, neg = [0.97, 0.93, 0.2], [i / 100 for i in range(100)]
+    assert weighted_catch(pos, neg, [1.0] * 100, 0.04) == recall_at_fpr(pos, neg, 0.04)
+    # weighting toward high-scoring honest runs raises the cut
+    assert weighted_catch(pos, neg, [1.0] * 90 + [50.0] * 10, 0.04) < weighted_catch(
+        pos, neg, [1.0] * 100, 0.04
+    )

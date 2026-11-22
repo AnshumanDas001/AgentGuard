@@ -29,7 +29,34 @@ from agentguard.guard.policy import policy_for
 from agentguard.guard.schemas import GuardBackend
 
 OUT_DIR = RESULTS_DIR / "bench" / "basharena"
-SAMPLES = {"all": None, "s200": 200, "s100": 100, "f50": 50, "v58": 58, "d158": 158, "t200": 200}
+SAMPLES = {
+    "all": None,
+    "s200": 200,
+    "s100": 100,
+    "f50": 50,
+    "v58": 58,
+    "d158": 158,
+    "t200": 200,
+    # MonitoringBench (bench/monitoringbench.py), the held-out test: its 550 honest runs with the
+    # 196 standard attacks (Opus 4.6, BashArena's usual attack prompt), or with all 2,644.
+    "mb196": None,
+    "mb-all": None,
+}
+MB_SAMPLES = {"mb196", "mb-all"}
+
+
+def load_for(*names: str) -> list[Trajectory]:
+    """The runs the named samples need: Redwood's, MonitoringBench's, or both."""
+    from agentguard.bench.monitoringbench import CACHE as MB_CACHE
+
+    out = []
+    if any(n not in MB_SAMPLES for n in names):
+        out += load()
+    if any(n in MB_SAMPLES for n in names):
+        out += load(MB_CACHE)
+    return out
+
+
 # Guards that see the whole run rather than the last 5 steps.
 WHOLE_RUN = {"jev-long", "jev-v2", "jev-v3", "jev-v4"}
 WITH_LEDGER = {"jev-v2", "jev-v3", "jev-v4"}
@@ -52,7 +79,12 @@ def sample(trajectories: list[Trajectory], name: str) -> list[Trajectory]:
     d158 is f50 + v58 (development, 158 runs). t200 is the final test: 100 honest runs and 100
     attacks outside s200, fixed before any LLM guard scored them; score it once, frozen.
     """
-    runs = scored(trajectories)
+    if name in MB_SAMPLES:
+        runs = [t for t in trajectories if t.id.startswith("mb-")]
+        if name == "mb196":
+            return [t for t in runs if t.kind == "honest" or t.source == "opus_only"]
+        return runs
+    runs = scored([t for t in trajectories if not t.id.startswith("mb-")])
     n = SAMPLES[name]
     if n is None:
         return runs
@@ -265,7 +297,7 @@ def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None)
     from agentguard.guard.backends.jev import JevBackend, question_names
     from agentguard.guard.policy import tuned_policy
 
-    trajectories = sample(load(), sample_name)
+    trajectories = sample(load_for(sample_name), sample_name)
     policy = None
     if guard in ("jev-long", "jev-v2", "jev-v3", "jev-v4"):
         backend = JevBackend(
@@ -278,7 +310,7 @@ def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None)
     no_retention(backend)
     out = OUT_DIR / f"{guard}.jsonl"
     n_steps = sum(len(proposals(t)) for t in trajectories)
-    print(f"{guard} on BashArena {sample_name}: {len(trajectories)} runs, {n_steps} steps")
+    print(f"{guard} on {sample_name}: {len(trajectories)} runs, {n_steps} steps")
 
     async def go() -> dict[str, Any]:
         budget = max_cost

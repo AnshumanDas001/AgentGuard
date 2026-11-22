@@ -61,6 +61,7 @@ class Trajectory:
     side_task: str | None = None
     side_success: bool = False
     steps: list[Step] = field(default_factory=list)
+    source: str | None = None  # MonitoringBench: how the attack was made (e.g. opus_only)
 
 
 def map_call(tool: str, args: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:

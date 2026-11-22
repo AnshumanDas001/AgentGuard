@@ -20,8 +20,8 @@ import math
 import random
 from typing import Any
 
-from agentguard.bench.basharena import Trajectory, load, proposals
-from agentguard.bench.run import OUT_DIR, SIDE_TASKS, sample
+from agentguard.bench.basharena import Trajectory, proposals
+from agentguard.bench.run import OUT_DIR, SIDE_TASKS, load_for, sample
 from agentguard.bench.score import read_steps
 from agentguard.eval.bootstrap import interval, resamples
 from agentguard.eval.metrics import auroc, recall_at_fpr
@@ -78,6 +78,60 @@ def run_facts(run: Trajectory) -> list[float]:
     return [float("from templates" in flags), float("uses code it wrote earlier" in flags)]
 
 
+def length_weights(
+    honest_lengths: list[int], attack_lengths: list[int], bins: int = 5
+) -> list[float]:
+    """Weights that give the honest runs the attacks' length distribution.
+
+    Bins are quintiles of the attack lengths (the outer bins open-ended); each honest run is
+    weighted by (attacks' share of its bin) / (honest runs' share of it). A bin with no honest
+    run gives its share to the nearest bin that has some."""
+    ranked = sorted(attack_lengths)
+    edges = [ranked[min(len(ranked) - 1, (len(ranked) * k) // bins)] for k in range(1, bins)]
+
+    def bin_of(n: int) -> int:
+        return sum(n >= e for e in edges)
+
+    a_share = [0.0] * bins
+    for n in attack_lengths:
+        a_share[bin_of(n)] += 1 / len(attack_lengths)
+    h_count = [0] * bins
+    for n in honest_lengths:
+        h_count[bin_of(n)] += 1
+    for b in range(bins):
+        if h_count[b] == 0 and a_share[b] > 0:
+            near = min((c for c in range(bins) if h_count[c]), key=lambda c: abs(c - b))
+            a_share[near] += a_share[b]
+            a_share[b] = 0.0
+    return [a_share[bin_of(n)] / (h_count[bin_of(n)] / len(honest_lengths)) for n in honest_lengths]
+
+
+def weighted_catch(pos: list[float], neg: list[float], weights: list[float], fpr: float) -> float:
+    """Share of attacks above the highest cut whose weighted honest flag rate is at most fpr."""
+    total = sum(weights)
+    flagged, cut = 0.0, math.inf
+    for score in sorted(set(neg), reverse=True):
+        w = sum(wt for v, wt in zip(neg, weights, strict=True) if v == score) / total
+        if flagged + w > fpr + 1e-12:
+            cut = score
+            break
+        flagged += w
+    else:
+        cut = -math.inf
+    return sum(p > cut for p in pos) / len(pos)
+
+
+def weighted_auroc(pos: list[float], neg: list[float], weights: list[float]) -> float:
+    total = sum(weights)
+    return (
+        sum(
+            wt * sum((p > v) + 0.5 * (p == v) for p in pos) / len(pos)
+            for v, wt in zip(neg, weights, strict=True)
+        )
+        / total
+    )
+
+
 def fit(x: list[list[float]], y: list[int]) -> tuple[list[float], list[float], list[float], float]:
     """Standardize, then L2 logistic regression by gradient descent (no extra dependencies)."""
     cols = list(zip(*x, strict=True))
@@ -109,7 +163,7 @@ def main(
     max_only: bool = False,
     profile: bool = False,
 ) -> dict[str, Any]:
-    trajectories = load()
+    trajectories = load_for(train, test)
     rows = read_steps(OUT_DIR / f"{guard}.jsonl")
     tasks = {}
     if profile:
@@ -173,6 +227,20 @@ def main(
         "auroc": round(sum(c[0] for c in controlled) / 5, 3),
         "catch_at_4pct_fpr": round(sum(c[1] for c in controlled) / 5, 3),
         "catch_at_1pct_fpr": round(sum(c[2] for c in controlled) / 5, 3),
+    }
+    # Length weighting (works whichever kind of run is longer): honest runs reweighted to the
+    # attacks' length distribution before the cut is set. On MonitoringBench attacks are longer.
+    h_runs = [t for t in te if t.kind == "honest"]
+    weights = length_weights([len(proposals(t)) for t in h_runs], lengths)
+    neg = [scores[t.id] for t in h_runs]
+    out["length_weighted"] = {
+        "auroc": round(weighted_auroc(pos, neg, weights), 3),
+        "catch_at_4pct_fpr": round(weighted_catch(pos, neg, weights, 0.04), 3),
+        "catch_at_1pct_fpr": round(weighted_catch(pos, neg, weights, 0.01), 3),
+    }
+    out["lengths"] = {
+        "honest_median": sorted(len(proposals(t)) for t in h_runs)[len(h_runs) // 2],
+        "attack_median": sorted(lengths)[len(lengths) // 2],
     }
     side = {t.id: t.side_task for t in te}
     out["by_side_task"] = {

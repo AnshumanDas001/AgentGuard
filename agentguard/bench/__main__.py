@@ -40,6 +40,10 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--concurrency", type=int, default=8)
     run_p.add_argument("--max-cost", type=float, help="stop new checks once this many USD spent")
     sub.add_parser("score", help="metrics from the saved runs")
+    mb_p = sub.add_parser(
+        "mb-convert", help="convert downloaded MonitoringBench logs (bench group)"
+    )
+    mb_p.add_argument("--all", action="store_true", help="all 2,644 attacks, not just the 196")
     head_p = sub.add_parser("head", help="learned run score on a guard's answers (train/test)")
     head_p.add_argument("--guard", default="jev-v2")
     head_p.add_argument("--train", default="f50", choices=list(SAMPLES))
@@ -51,6 +55,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "fetch":
         return fetch()
+    if args.command == "mb-convert":
+        from agentguard.bench.monitoringbench import build
+
+        print(build(None if args.all else {"opus_only"}))
+        return 0
     if args.command == "head":
         from agentguard.bench.head import main as head_main
 
