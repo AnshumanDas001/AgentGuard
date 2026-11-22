@@ -40,10 +40,19 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--concurrency", type=int, default=8)
     run_p.add_argument("--max-cost", type=float, help="stop new checks once this many USD spent")
     sub.add_parser("score", help="metrics from the saved runs")
+    head_p = sub.add_parser("head", help="learned run score on a guard's answers (train/test)")
+    head_p.add_argument("--guard", default="jev-v2")
+    head_p.add_argument("--train", default="f50", choices=list(SAMPLES))
+    head_p.add_argument("--test", default="v58", choices=list(SAMPLES))
     args = parser.parse_args(argv)
 
     if args.command == "fetch":
         return fetch()
+    if args.command == "head":
+        from agentguard.bench.head import main as head_main
+
+        head_main(args.guard, args.train, args.test)
+        return 0
     if args.command == "score":
         from agentguard.bench.score import main as score_main
 
