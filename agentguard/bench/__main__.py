@@ -40,6 +40,12 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--concurrency", type=int, default=8)
     run_p.add_argument("--max-cost", type=float, help="stop new checks once this many USD spent")
     sub.add_parser("score", help="metrics from the saved runs")
+    rv_p = sub.add_parser("review", help="second look: Haiku reviews each run's top Jev steps")
+    rv_p.add_argument("--sample", default="d158", choices=list(SAMPLES))
+    rv_p.add_argument("--max-cost", type=float, required=True)
+    rv_p.add_argument("--concurrency", type=int, default=8)
+    rve_p = sub.add_parser("review-eval", help="catch rates with the second look (no calls)")
+    rve_p.add_argument("--sample", default="d158", choices=list(SAMPLES))
     sub.add_parser("mb-report", help="MonitoringBench result vs published monitors (bench group)")
     mb_p = sub.add_parser(
         "mb-convert", help="convert downloaded MonitoringBench logs (bench group)"
@@ -56,6 +62,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "fetch":
         return fetch()
+    if args.command == "review-eval":
+        import json
+
+        from agentguard.bench.review import evaluate
+
+        print(json.dumps(evaluate(args.sample), indent=2))
+        return 0
     if args.command == "mb-report":
         import json
 
@@ -82,6 +95,11 @@ def main(argv: list[str] | None = None) -> int:
         score_main()
         return 0
     load_dotenv()
+    if args.command == "review":
+        from agentguard.bench.review import main as review_main
+
+        review_main(args.sample, args.max_cost, args.concurrency)
+        return 0
     from agentguard.bench.run import main as run_main
 
     run_main(args.guard, args.sample, args.concurrency, args.max_cost)

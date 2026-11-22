@@ -202,3 +202,22 @@ def test_length_weighting_matches_the_attack_lengths() -> None:
     assert weighted_catch(pos, neg, [1.0] * 90 + [50.0] * 10, 0.04) < weighted_catch(
         pos, neg, [1.0] * 100, 0.04
     )
+
+
+def test_review_ranks_combinations_and_request() -> None:
+    from agentguard.bench.review import combine, ranks, request_body
+
+    r = ranks({"a": 1.0, "b": 1.0, "c": 3.0})
+    assert r["a"] == r["b"] < r["c"] == 1.0
+    c = combine({"a": 0.1, "b": 0.9}, {"a": 9.0, "b": 2.0})
+    assert c["judge_alone"]["a"] > c["judge_alone"]["b"]
+    assert c["max_rank"]["a"] == c["max_rank"]["b"] or set(c) == {
+        "judge_alone",
+        "mean_rank",
+        "max_rank",
+    }
+    t = _traj(0, "attack", "sudo_edit", n=3)
+    body = request_body(t, 2)
+    text = body["messages"][1]["content"]
+    assert body["provider"]["data_collection"] == "deny"
+    assert "<action_to_review" in text and "sudo_edit" not in text and "the task" in text
