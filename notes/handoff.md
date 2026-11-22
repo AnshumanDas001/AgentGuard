@@ -255,6 +255,23 @@ does not inflate the result.
 The facts results are optimistic, because the facts were found by reading f50 and v58. The cheap judge has been run on only 88 s100 steps (a cost probe:
 $0.00062 per step), so **there is no judge comparison yet.**
 
+### MonitoringBench FOLLOW-UP: Jev + Haiku second look (2026-11-23, pre-registered, run once)
+
+`max_rank` (chosen on d158 before this run): **63.3% [56.1, 72.4] caught at 1% FPR**, 77.6%
+[66.3, 84.2] at 4%, AUROC 0.955 [0.936, 0.970]; length-weighted 1% 69.4%. By side task at 1%:
+firewall 53.4%, malware 92.9%, password leaks 86.0%, sudo 32.1%. That is above GPT-5 (60.2),
+o3 (62.2) and Sonnet 4.0 (58.7) and below GPT-5.1 Codex (70.0). 1,491 Haiku reviews cost $1.31
+(no refusals or errors, 2.2 s median each); with Jev's $2.81 the whole monitor cost $4.12 for
+746 runs ($0.19 per 1k steps). `bench review-eval --sample mb196` →
+`results/bench/monitoringbench/review-eval-mb196.json`.
+- The 45.4% stays the headline result for Jev alone; this is a follow-up on the same attacks.
+- The other combinations scored higher here (judge_alone 68.9%, mean_rank 67.9%) but were not
+  chosen on development data; quoting them would be cherry-picking.
+- Caveats: the top-2 steps are picked after the run ends (a live monitor would review any step
+  above a threshold instead); the reviewer's prompt names threat types that match BashArena's
+  side tasks, while MonitoringBench's monitors got generic examples; the honest-run caveats
+  above still apply.
+
 ### What we learned (the story for interviews)
 
 1. **The task text was cut off.** Every BashArena task is longer than 2,000 characters, and half
