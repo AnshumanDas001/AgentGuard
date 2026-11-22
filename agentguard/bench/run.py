@@ -34,6 +34,8 @@ SAMPLES = {"all": None, "s200": 200, "s100": 100, "f50": 50, "v58": 58, "d158": 
 WHOLE_RUN = {"jev-long", "jev-v2", "jev-v3"}
 WITH_LEDGER = {"jev-v2", "jev-v3"}
 EXTENDED = {"jev-v3"}
+# Steps that ledger.needs_check clears are recorded as all-zero answers, with no model call.
+PREFILTERED = {"jev-v3"}
 SEED = 20261121
 SIDE_TASKS = ("disable_firewall", "download_malware", "leak_passwords", "sudo_edit")
 NO_RETENTION = {"data_collection": "deny"}
@@ -134,7 +136,12 @@ async def run(
     ledger: bool = False,
     extended: bool = False,
     policy: Any = None,
+    prefilter: list[str] | None = None,
 ) -> dict[str, Any]:
+    """prefilter: the guard's answer names; steps ledger.needs_check clears get zero answers
+    and no model call."""
+    from agentguard.guard.ledger import needs_check
+
     out.parent.mkdir(parents=True, exist_ok=True)
     done = done_keys(out)
     todo = [
@@ -148,11 +155,19 @@ async def run(
     decide = (policy or policy_for(backend)).decide
     gate = asyncio.Semaphore(concurrency)
     spent = {"usd": 0.0, "stopped": False}
-    counts = {"scored": 0, "errors": 0, "skipped_budget": 0}
+    counts = {"scored": 0, "errors": 0, "skipped_budget": 0, "prefiltered": 0}
 
     with out.open("a", encoding="utf-8") as f:
 
         async def one(t: Trajectory, i: int, action: Any) -> None:
+            if prefilter is not None and not needs_check(action.tool, action.context):
+                counts["prefiltered"] += 1
+                row = {"traj": t.id, "kind": t.kind, "side_task": t.side_task, "step": i}
+                row |= {"tool": action.tool, "p_unsafe": 0.0, "decision": "allow"}
+                row |= {"category": None, "cost_usd": 0.0, "latency_ms": 0.0}
+                row["raw"] = {"prefiltered": True, "answers": dict.fromkeys(prefilter, 0.0)}
+                f.write(json.dumps(row) + "\n")
+                return
             async with gate:
                 if max_cost is not None and spent["usd"] >= max_cost:
                     spent["stopped"] = True
@@ -207,7 +222,7 @@ async def run(
 
 def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None) -> None:
     from agentguard.e2e.run import build_config
-    from agentguard.guard.backends.jev import JevBackend
+    from agentguard.guard.backends.jev import JevBackend, question_names
     from agentguard.guard.policy import tuned_policy
 
     trajectories = sample(load(), sample_name)
@@ -233,6 +248,7 @@ def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None)
             ledger=guard in WITH_LEDGER,
             extended=guard in EXTENDED,
             policy=policy,
+            prefilter=question_names(v2=True, v3=True) if guard in PREFILTERED else None,
         )
     )
     print(json.dumps(summary, indent=2))

@@ -18,6 +18,7 @@ Errors and timeouts are retried, then raised, so the interceptor fails closed.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import time
 from typing import Any
@@ -201,6 +202,9 @@ V3_QUESTIONS: dict[str, tuple[str, str, RiskCategory]] = {
 }
 V2_ACTION_HEAD = 6_000
 V2_STATE_CHARS = 28_000
+# Jev's long-context switch counts bytes, and non-ASCII text takes more bytes than characters:
+# v3 trims earlier_steps until the encoded state fits under this.
+V3_STATE_BYTES = 31_000
 
 
 def _v2_action(action: ActionProposal) -> str:
@@ -243,6 +247,12 @@ def request_body(
             "earlier_steps": history_text(action.history, budget, recent_full=RECENT_FULL),
             "proposed_action": proposed,
         }
+        while v3 and budget > 2_000:
+            over = len(json.dumps(state, ensure_ascii=False).encode()) - V3_STATE_BYTES
+            if over <= 0:
+                break
+            budget = max(2_000, budget - over - 200)
+            state["earlier_steps"] = history_text(action.history, budget, recent_full=RECENT_FULL)
         asked = V2_QUESTIONS | (V3_QUESTIONS if v3 else {})
         questions = _questions() | {
             name: {"type": "noul", "instructions": q, "criteria": {"true": yes, "false": NO}}
@@ -275,6 +285,16 @@ def request_body(
         },
         "questions": _questions(),
     }
+
+
+def question_names(*, v2: bool = False, v3: bool = False) -> list[str]:
+    """The answer names a Jev mode returns, in order."""
+    names = [c.value for c in QUESTIONS]
+    if v2 or v3:
+        names += list(V2_QUESTIONS)
+    if v3:
+        names += list(V3_QUESTIONS)
+    return names
 
 
 def _questions() -> dict[str, Any]:
