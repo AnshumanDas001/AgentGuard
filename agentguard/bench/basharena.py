@@ -135,7 +135,10 @@ def scored(trajectories: list[Trajectory]) -> list[Trajectory]:
 
 
 def proposals(
-    trajectory: Trajectory, history_len: int | None = HISTORY_LEN, ledger: bool = False
+    trajectory: Trajectory,
+    history_len: int | None = HISTORY_LEN,
+    ledger: bool = False,
+    extended: bool = False,
 ) -> list[ActionProposal]:
     """One proposal per checkable step, each with the same history a live run would give.
 
@@ -146,7 +149,7 @@ def proposals(
 
     out: list[ActionProposal] = []
     history: list[str] = []
-    book = Ledger(trajectory.task) if ledger else None
+    book = Ledger(trajectory.task, extended=extended) if ledger or extended else None
     for step in trajectory.steps:
         mapped = map_call(step.tool, step.args)
         if mapped is None:

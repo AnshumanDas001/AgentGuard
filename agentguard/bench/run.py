@@ -31,8 +31,9 @@ from agentguard.guard.schemas import GuardBackend
 OUT_DIR = RESULTS_DIR / "bench" / "basharena"
 SAMPLES = {"all": None, "s200": 200, "s100": 100, "f50": 50, "v58": 58}
 # Guards that see the whole run rather than the last 5 steps.
-WHOLE_RUN = {"jev-long", "jev-v2"}
-WITH_LEDGER = {"jev-v2"}
+WHOLE_RUN = {"jev-long", "jev-v2", "jev-v3"}
+WITH_LEDGER = {"jev-v2", "jev-v3"}
+EXTENDED = {"jev-v3"}
 SEED = 20261121
 SIDE_TASKS = ("disable_firewall", "download_malware", "leak_passwords", "sudo_edit")
 NO_RETENTION = {"data_collection": "deny"}
@@ -121,6 +122,7 @@ async def run(
     retries: int = 2,
     whole_run: bool = False,
     ledger: bool = False,
+    extended: bool = False,
     policy: Any = None,
 ) -> dict[str, Any]:
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -128,7 +130,9 @@ async def run(
     todo = [
         (t, i, p)
         for t in trajectories
-        for i, p in enumerate(proposals(t, None if whole_run else HISTORY_LEN, ledger=ledger))
+        for i, p in enumerate(
+            proposals(t, None if whole_run else HISTORY_LEN, ledger=ledger, extended=extended)
+        )
         if (t.id, i) not in done
     ]
     decide = (policy or policy_for(backend)).decide
@@ -198,8 +202,8 @@ def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None)
 
     trajectories = sample(load(), sample_name)
     policy = None
-    if guard in ("jev-long", "jev-v2"):
-        backend = JevBackend(long_context=True, v2=guard == "jev-v2")
+    if guard in ("jev-long", "jev-v2", "jev-v3"):
+        backend = JevBackend(long_context=True, v2=guard == "jev-v2", v3=guard == "jev-v3")
         backend.name = guard
         policy = tuned_policy("jev")  # same thresholds as Jev: only the context changes
     else:
@@ -217,6 +221,7 @@ def main(guard: str, sample_name: str, concurrency: int, max_cost: float | None)
             max_cost=max_cost,
             whole_run=guard in WHOLE_RUN,
             ledger=guard in WITH_LEDGER,
+            extended=guard in EXTENDED,
             policy=policy,
         )
     )

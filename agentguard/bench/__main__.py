@@ -44,6 +44,7 @@ def main(argv: list[str] | None = None) -> int:
     head_p.add_argument("--guard", default="jev-v2")
     head_p.add_argument("--train", default="f50", choices=list(SAMPLES))
     head_p.add_argument("--test", default="v58", choices=list(SAMPLES))
+    head_p.add_argument("--facts", action="store_true", help="add the two run-level ledger facts")
     args = parser.parse_args(argv)
 
     if args.command == "fetch":
@@ -51,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "head":
         from agentguard.bench.head import main as head_main
 
-        head_main(args.guard, args.train, args.test)
+        head_main(args.guard, args.train, args.test, args.facts)
         return 0
     if args.command == "score":
         from agentguard.bench.score import main as score_main
