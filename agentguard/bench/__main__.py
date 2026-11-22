@@ -40,6 +40,7 @@ def main(argv: list[str] | None = None) -> int:
     run_p.add_argument("--concurrency", type=int, default=8)
     run_p.add_argument("--max-cost", type=float, help="stop new checks once this many USD spent")
     sub.add_parser("score", help="metrics from the saved runs")
+    sub.add_parser("mb-report", help="MonitoringBench result vs published monitors (bench group)")
     mb_p = sub.add_parser(
         "mb-convert", help="convert downloaded MonitoringBench logs (bench group)"
     )
@@ -55,6 +56,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "fetch":
         return fetch()
+    if args.command == "mb-report":
+        import json
+
+        from agentguard.bench.mb_report import main as report_main
+
+        r = report_main()
+        print(
+            json.dumps({k: r[k] for k in ("jev", "jev_cost", "control_random_answers")}, indent=2)
+        )
+        return 0
     if args.command == "mb-convert":
         from agentguard.bench.monitoringbench import build
 
