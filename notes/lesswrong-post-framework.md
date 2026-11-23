@@ -20,7 +20,10 @@ public benchmark, "VulnBench", against GPT-5 and other frontier reviewers. None 
 
 ## Step 0: before you write anything
 
-### Read these, in this order (about 4–6 hours in total)
+### Read these, in this order (about 5–7 hours in total)
+
+**Full summaries, the sections to read closely, and the objections to prepare for are in
+[lesswrong-reading-list.md](lesswrong-reading-list.md).** The short list:
 
 **Must read (rules and style):**
 1. [New LessWrong Editor + LLM policy update (Mar 2026)](https://www.lesswrong.com/posts/nQWavk9mnwcv6ScMR/new-lesswrong-editor-also-an-update-to-our-llm-policy),
@@ -51,8 +54,9 @@ public benchmark, "VulnBench", against GPT-5 and other frontier reviewers. None 
 **Rationality basics (short, and moderators check for them):**
 
 9. [Update Yourself Incrementally](https://www.lesswrong.com/posts/627DZcvme7nLDrbZu/update-yourself-incrementally)
-   and the post linked as "might be wrong" in the submission guidelines. Both are about giving
-   probabilities and looking for your own errors.
+   and [Rationalization](https://www.lesswrong.com/posts/SFZoEBpLo9frSJGkc/rationalization)
+   (Eliezer Yudkowsky, 2007, 3–4 minutes each). They're about giving probabilities and testing
+   your idea in ways that could prove it wrong.
 
 While reading, keep a notes file with two lists: **"objections people might raise"** and
 **"posts I should link"**. You'll use both later.
