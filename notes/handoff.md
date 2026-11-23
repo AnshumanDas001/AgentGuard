@@ -378,8 +378,11 @@ review:
    descriptions, as the BashArena paper's monitor is told. It's a fair, untried lever. Develop
    it on d158 only.
 5. **Write-up (done 2026-11-24 unless noted):**
-   - A Level 4 section in the README (with `results/charts/mb-catch.png` from `bench mb-chart`)
-     and finding 4 in `notes/findings.md`.
+   - The README is now a short front page (user's request, 2026-11-24): the four guards'
+     final results, Jev alone and Jev + Haiku on MonitoringBench (chart from `bench mb-chart`),
+     and how that monitor is built. Everything else (dataset, dev results, tuning, Levels 1–4
+     in full) lives in `docs/full-report.md`. Keep that split when adding results.
+   - Finding 4 in `notes/findings.md`.
    - A Level 4 tab in the dashboard.
    - Resume bullets and interview answers 7–9 in `notes/private/career.md`.
    - `review-eval` now also writes 95% bootstrap intervals (`ci95`); the saved values are
