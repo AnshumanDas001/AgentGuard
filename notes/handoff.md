@@ -389,8 +389,10 @@ review:
      unchanged.
    - Blog: Finding 4 (MonitoringBench) added on 2026-11-24, to the published page and
      `notes/blog-post.md`.
-   - LessWrong draft: `notes/lesswrong-draft.md`, for the user to post themselves (never post
-     it for them).
+   - LessWrong: `notes/lesswrong-draft.md` is a writing kit, not prose. LessWrong's 2026 LLM
+     policy is close to zero-LLM for first posts, so the user writes the text themselves; Claude
+     may only lightly edit, check facts, and make charts. Never write post prose for it, and
+     never post it.
    - The field guide already covers Level 4 through MonitoringBench. Add t200 and the judge
      comparison to it when they exist (see section 2 for how to edit it).
 
