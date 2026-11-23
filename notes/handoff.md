@@ -60,7 +60,9 @@ policy allows, escalates or blocks.
   - **Field guide** (the user's study guide): https://claude.ai/artifact/Pa9vKbVN6ngT4ui8djpGNw.
     Updated 2026-11-23 with Level 4, in sections 12–14 (BashArena setup, how Jev was improved,
     the MonitoringBench test), plus new terms, mistakes, a fourth finding, limitations, future
-    work and interview questions. It does not have t200 or a judge comparison yet, because
+    work and interview questions. Updated again the same day: the learned run score explained
+    step by step with a worked example, and section 15 on the Haiku second look and the cost
+    comparison (later sections renumbered 16–21). It does not have t200 or a judge comparison yet, because
     neither exists. Keep it in the same style whenever a new result lands: plain explanations,
     tables with exact numbers, caveats, a "say it in 30 seconds" box and interview Q&As.
   - **Blog:** https://claude.ai/artifact/1VygoJ3HfCCy2XDRBWwJSz. It does not cover Level 4.
