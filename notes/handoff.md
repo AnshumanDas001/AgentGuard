@@ -389,7 +389,9 @@ review:
      unchanged.
    - Blog: Finding 4 (MonitoringBench) added on 2026-11-24, to the published page and
      `notes/blog-post.md`.
-   - LessWrong: `notes/lesswrong-draft.md` is a writing kit, not prose. LessWrong's 2026 LLM
+   - LessWrong: `notes/lesswrong-post-framework.md` is the framework the user writes into
+     (examples use a made-up project on purpose). `notes/lesswrong-draft.md` is Claude's
+     earlier prose draft, restored at the user's request; it can't be posted as is. LessWrong's 2026 LLM
      policy is close to zero-LLM for first posts, so the user writes the text themselves; Claude
      may only lightly edit, check facts, and make charts. Never write post prose for it, and
      never post it.
