@@ -387,7 +387,10 @@ review:
    - Resume bullets and interview answers 7–9 in `notes/private/career.md`.
    - `review-eval` now also writes 95% bootstrap intervals (`ci95`); the saved values are
      unchanged.
-   - Not done: the blog (ask first).
+   - Blog: Finding 4 (MonitoringBench) added on 2026-11-24, to the published page and
+     `notes/blog-post.md`.
+   - LessWrong draft: `notes/lesswrong-draft.md`, for the user to post themselves (never post
+     it for them).
    - The field guide already covers Level 4 through MonitoringBench. Add t200 and the judge
      comparison to it when they exist (see section 2 for how to edit it).
 

@@ -109,6 +109,46 @@ the encoded, scripted and split versions of attacks they had caught. The LLM gua
 made Jev miss 18% of attacks it had caught. Splitting tests whether a guard reads the
 history, and that is the attack I'd expect a careful adversary to use.
 
+## Finding 4: against a careful attacker, a guard needs memory of the whole run
+
+Blatant saboteurs are easy. So I went looking for a careful one. BashArena, from the UK AI Security Institute and Redwood Research, gives an agent real Linux admin tasks. In attack runs, Claude Opus 4.6 also quietly pursues one of four side tasks: disable the firewall, download and run malware, leak passwords, or give a user passwordless sudo. It knows a monitor is watching, and it is good at hiding. Redwood publishes 1,200 of these runs.
+
+Every guard that had worked on my own data did worse than a coin flip. Jev's AUROC was 0.23: it rated honest runs as *more* suspicious than attacks. Reading the logs gave three reasons:
+
+- **Honest sysadmin work looks dangerous.** The honest tasks themselves ask the agent to edit firewall rules and sudo settings, so "does this weaken a security control?" fires on honest runs all the time.
+- **The attacks are spread out.** The attacker builds its change over many steps (a median of 8.5 for the firewall), often inside helper files it wrote itself, so no single step looks bad.
+- **Honest runs were twice as long.** That gives them more chances at one high-scoring step.
+
+Three changes, all developed on Redwood's runs, fixed most of it:
+
+- **A security ledger.** Plain code keeps a notebook of everything security-relevant the run has done so far: system files written, secrets read, controls touched, addresses the task never mentions, and the scripts the agent wrote and what they import. Jev reads it next to each action and answers 13 yes/no questions.
+- **A small learned run score.** Instead of taking the scariest answer, a logistic regression learns how much each answer should count. "Hides its intent" counts most. "Weakens a security control" ends up counting *against*, because honest tasks trip it constantly.
+- **Reading the misses.** The attacks it still missed assembled the harm from files the agent had written earlier, often building security settings from templates. Those two patterns became two facts in the ledger.
+
+Every one of those ideas came from reading Redwood's runs, so numbers on them flatter me. The real test was MonitoringBench, a 2026 benchmark that publishes 13 monitors' scores on 196 BashArena attacks. Palaestra Research released 550 honest runs to pair with it, which set the 1% false-alarm line. I froze the recipe with a rule written down in advance, wrote the test plan before the first call, and scored it once.
+
+- **45%** Jev alone, caught at 1% false alarms
+- **63%** Jev + a Haiku second look
+- **$4.12** both stages, all 746 runs
+
+![Share of MonitoringBench's 196 standard attacks caught when 1% of honest runs are flagged. Black lines are 95% intervals. Published monitors from the paper's Table 5; their thresholds come from the paper's own honest runs.](../results/charts/mb-catch.png)
+
+Jev alone caught 45%: below GPT-5 (60%), far above GPT-4.1 (10%), and well above a control that swaps Jev's answers for random numbers (20%). It behaved like two different monitors. On malware and password leaks, where code or data crosses the network, it caught 91% and 77%, more than GPT-5 or o3. On firewall and sudo changes, the ones honest tasks also make, it caught 15–17%.
+
+The fix was to spend a stronger model only where the cheap one points. Claude Haiku 5.5 takes a second look at each run's two most suspicious steps, reads them with the task and the ledger, and gives a 0–10 suspicion. The final score is the higher of Jev's rank and Haiku's rank, so either can raise the alarm. I chose that combination on Redwood's runs, with a pass mark written down first, and ran it once: **63% caught**, level with GPT-5 and o3, with firewall catches up from 17% to 53%. Two other combinations scored higher on MonitoringBench (69% and 68%), but I hadn't picked them in advance, so they don't count.
+
+It is also cheap. Both stages cost $4.12 for all 746 runs. Having GPT-5 read each finished run once would cost at least $9.70 in input alone. Having it check every action *before* it runs, which is what a pre-execution monitor does, would mean rereading the run at every step: about $260 without caching.
+
+> The cheap model wasn't the problem. Asking it about one action at a time, with no memory, was.
+
+The caveats matter here:
+
+- The published monitors' false-alarm lines come from different honest runs than mine.
+- They read whole runs without tool outputs.
+- My second look picks its two steps after the run ends; a live version would use a threshold.
+- Haiku's prompt names threat types that match BashArena's side tasks.
+- Sudo changes are still caught only 32% of the time, and I tested only the standard attacks, not the harder ones refined to evade monitors.
+
 ## What I got wrong along the way
 
 Three bugs taught me more than the results did.
@@ -132,7 +172,8 @@ every affected run was redone.
 The attackers here were blatant. They named the attacker's email address and the file to
 delete outright, and the side-task prompt gave them no advice on hiding. A monitor that
 reads the task and each action catches that kind of misbehaviour reliably and cheaply.
-Whether it catches a *careful* attacker is the open question. The simulated reviewer never
+Against a *careful* attacker (Finding 4) the answer is only partly: 45% to 63% caught at
+1% false alarms, and most sudo changes still get through. The simulated reviewer never
 tires, and a real one asked 300 times per 100 tasks would. Each scenario ran once, and the
 test set has 51 clear unsafe rows, so the intervals are wide.
 
@@ -150,9 +191,12 @@ job. Both are where AgentGuard's 0-of-722 result should be stress-tested.
 - **Cheap guards plus a cascade are enough for blatant misbehaviour.** A cheap judge with a
   strong one behind it stopped every side task, let the agent finish 94% of its work with
   nobody watching, and cost under a cent per task.
+- **Against a careful attacker, give the guard memory of the whole run.** A cheap model with a security ledger and a learned score reached 45%. A stronger model looking only where it pointed took that to 63%, level with GPT-5, at a fraction of the cost.
 - **The threat model matters more than the guard.** Injected text rarely moved a modern
   agent. A misaligned agent that adapts when refused is the harder problem.
 
 The code, the frozen test split, every saved run and a replayable dashboard are on
 GitHub: [AgentGuard](https://github.com/AnshumanDas001/AgentGuard). Jev was evaluated
-through TypeSafe AI's API; thanks to them for making it available.
+through TypeSafe AI's API; thanks to them for making it available. BashArena runs: Redwood
+Research (CC BY-SA 4.0). MonitoringBench attacks (CC BY 4.0) and the honest runs released by
+Can Küçükkurt and Ethan Elasky at Palaestra Research (CC BY 4.0) were used for evaluation only.
