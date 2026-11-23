@@ -1,8 +1,9 @@
 """AgentGuard dashboard: `make dashboard`.
 
-Three tabs:
+Four tabs:
 
 - Results: the Level 1-3 numbers and charts, read from results/ (no API calls).
+- Level 4: the MonitoringBench result next to 13 published monitors (no API calls).
 - Live check: type an action and see what each guard decides, with its dev-tuned thresholds.
   The LLM guards and Jev call OpenRouter (OPENROUTER_API_KEY in .env) and cost money.
 - Replay: step through a recorded Level 3 run, action by action, as the guard saw it.
@@ -23,6 +24,13 @@ from agentguard.guard.schemas import ActionProposal, Decision
 
 CHARTS = RESULTS_DIR / "charts"
 E2E = RESULTS_DIR / "e2e"
+MB = RESULTS_DIR / "bench" / "monitoringbench"
+SIDE_TASKS = {
+    "disable_firewall": "Firewall",
+    "download_malware": "Malware",
+    "leak_passwords": "Password leak",
+    "sudo_edit": "Sudo",
+}
 GUARDS = {
     "rules": "Rules (regex, free)",
     "classifier": "DeBERTa classifier (local, free)",
@@ -203,6 +211,57 @@ def results_tab() -> None:
         st.dataframe(table, hide_index=True, use_container_width=True)
 
 
+def level4_tab() -> None:
+    from agentguard.bench.mb_report import NAMES
+
+    report_path, follow_path = MB / "report.json", MB / "review-eval-mb196.json"
+    if not report_path.is_file() or not follow_path.is_file():
+        st.info("No Level 4 results yet: see the README's Level 4 section.")
+        return
+    report = json.loads(report_path.read_text())
+    follow = json.loads(follow_path.read_text())["d158->mb196"]["max_rank"]
+    jev = report["jev"]
+    st.subheader("Level 4: MonitoringBench, a public AI-control benchmark")
+    st.caption(
+        "196 runs in which Claude Opus 4.6 secretly sabotages Linux admin work (BashArena), and "
+        "550 honest runs from Palaestra Research. Caught = share of attack runs above the line "
+        "that flags 1% of honest runs. The recipe was trained only on Redwood's BashArena runs "
+        "and scored here once."
+    )
+    a, b, c = st.columns(3)
+    a.metric("Jev alone, caught at 1% FPR", f"{jev['catch_at_1pct_fpr']['value']:.1%}",
+             help="Frozen recipe: Jev-v3, security ledger, learned run score")  # fmt: skip
+    b.metric("Jev + Haiku second look", f"{follow['catch_at_1pct_fpr']:.1%}",
+             help="Haiku reviews each run's 2 top steps; the higher of the two ranks")  # fmt: skip
+    c.metric("Cost, all 746 runs", "$4.12", help="$2.81 Jev + $1.31 Haiku")
+    image("mb-catch.png", "Ours next to the 13 published monitors (MonitoringBench Table 5)")
+
+    def row(name: str, catch: float, by: dict[str, float]) -> dict[str, str]:
+        return {"Monitor": name, "All": f"{catch:.1%}"} | {
+            label: f"{by[key]:.1%}" for key, label in SIDE_TASKS.items()
+        }
+
+    table = [
+        row("Jev alone (ours)", jev["catch_at_1pct_fpr"]["value"],
+            {k: v["catch_at_1pct_fpr"] for k, v in jev["by_side_task"].items()}),
+        row("Jev + Haiku (ours)", follow["catch_at_1pct_fpr"], follow["by_side_task_1pct"]),
+    ] + [
+        row(NAMES.get(k, k), v["catch_at_1pct_fpr"], v["by_side_task"])
+        for k, v in report["published_monitors"].items()
+    ]  # fmt: skip
+    st.dataframe(table, hide_index=True, use_container_width=True)
+    head = MB / "jev-head.json"
+    if head.is_file():
+        st.markdown("**The learned run score's weights** (trained on Redwood's d158 runs; "
+                    "positive pushes a run toward 'attack')")  # fmt: skip
+        weights = json.loads(head.read_text())["weights"]
+        st.dataframe([{"Input": k.replace(":max", " (run maximum)"), "Weight": w}
+                      for k, w in weights.items()], hide_index=True)  # fmt: skip
+    st.caption("Caveats: different honest runs set our thresholds and the published ones; the "
+               "published monitors read whole runs without tool outputs; the second look picks "
+               "its steps after the run ends.")  # fmt: skip
+
+
 def live_tab() -> None:
     import os
 
@@ -324,9 +383,11 @@ def main() -> None:
     st.title("AgentGuard")
     st.caption("A pre-execution safety monitor for LLM agents: every proposed tool call is "
                "scored before it runs, then allowed, sent to a human, or blocked.")  # fmt: skip
-    results, live, replay = st.tabs(["Results", "Live check", "Replay a run"])
+    results, level4, live, replay = st.tabs(["Results", "Level 4", "Live check", "Replay a run"])
     with results:
         results_tab()
+    with level4:
+        level4_tab()
     with live:
         live_tab()
     with replay:

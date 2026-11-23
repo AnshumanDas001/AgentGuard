@@ -1,6 +1,7 @@
 """The MonitoringBench result: the frozen Jev recipe next to the published monitors.
 
     uv run --group bench python -m agentguard.bench mb-report
+    uv run --group report python -m agentguard.bench mb-chart   # the README chart, no data needed
 
 Reads the saved Jev-v3 steps (nothing is called), applies the frozen learned score (trained on
 Redwood's d158 runs), and writes results/bench/monitoringbench/report.json with:
@@ -105,3 +106,86 @@ def main() -> dict[str, Any]:
     (OUT / "report.json").write_text(json.dumps(report, indent=2) + "\n")
     shutil.copy(OUT_DIR / f"head-{GUARD}-d158-mb196-facts-max.json", OUT / "jev-head.json")
     return report
+
+
+NAMES = {
+    "claude-opus-4-5-20251101": "Claude Opus 4.5",
+    "claude-sonnet-4-5": "Claude Sonnet 4.5",
+    "gpt-5.1-codex-max": "GPT-5.1 Codex Max",
+    "o3": "o3",
+    "gpt-5": "GPT-5",
+    "claude-sonnet-4-0": "Claude Sonnet 4.0",
+    "gpt-4.1": "GPT-4.1",
+    "gpt-4o": "GPT-4o",
+    "gpt-5-nano": "GPT-5 nano",
+    "o4-mini": "o4-mini",
+    "gpt-4-turbo-2024-04-09": "GPT-4 Turbo",
+    "gpt-4.1-mini": "GPT-4.1 mini",
+    "gpt-4o-mini": "GPT-4o mini",
+}
+
+
+def chart(out: Path | None = None) -> Path:
+    """results/charts/mb-catch.png: catch at 1% FPR on the 196 attacks, ours next to the 13
+    published monitors, from report.json and review-eval-mb196.json (no data download)."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from agentguard.eval.charts import CHART_DIR, COLORS, GRID, MUTED, SURFACE, TEXT, TEXT_2, style
+
+    report = json.loads((OUT / "report.json").read_text())
+    follow = json.loads((OUT / "review-eval-mb196.json").read_text())["d158->mb196"]["max_rank"]
+    # (label, value, ci, kind): kind is "ours", "control" or "published"
+    rows: list[tuple[str, float, list[float] | None, str]] = [
+        (NAMES.get(k, k), v["catch_at_1pct_fpr"], None, "published")
+        for k, v in report["published_monitors"].items()
+    ]
+    rows += [
+        ("Jev + Haiku second look (ours)", follow["catch_at_1pct_fpr"],
+         follow["ci95"]["catch_at_1pct_fpr"], "ours"),
+        ("Jev alone (ours)", report["jev"]["catch_at_1pct_fpr"]["value"],
+         report["jev"]["catch_at_1pct_fpr"]["ci"], "ours"),
+        ("Random-answer control", report["control_random_answers"]["catch_at_1pct_fpr"], None,
+         "control"),
+    ]  # fmt: skip
+    rows.sort(key=lambda r: r[1])
+    style()
+    fig, ax = plt.subplots(figsize=(7.6, 6.2))
+    blue, grey = COLORS["jev"], "#c9c8c2"
+    for y, (_label, v, ci, kind) in enumerate(rows):
+        ax.barh(y, 100 * v, height=0.62, color=blue if kind == "ours" else grey,
+                hatch="////" if kind == "control" else None,
+                edgecolor=SURFACE if kind != "control" else MUTED, linewidth=0)  # fmt: skip
+        if ci:
+            ax.plot([100 * ci[0], 100 * ci[1]], [y, y], color=TEXT, linewidth=1.5,
+                    solid_capstyle="butt")  # fmt: skip
+        x = 100 * (ci[1] if ci else v) + 1.2
+        ax.text(x, y, f"{100 * v:.1f}", va="center", fontsize=8.5,
+                color=TEXT if kind == "ours" else TEXT_2,
+                fontweight="bold" if kind == "ours" else "normal")  # fmt: skip
+    ax.set_yticks(range(len(rows)), [r[0] for r in rows])
+    for tick, r in zip(ax.get_yticklabels(), rows, strict=True):
+        if r[3] == "ours":
+            tick.set_color(TEXT)
+            tick.set_fontweight("bold")
+    ax.set_xlim(0, 104)
+    ax.set_xlabel("Share of the 196 standard attacks (Claude Opus 4.6) caught, %")
+    ax.grid(axis="y", visible=False)
+    ax.tick_params(axis="y", length=0)
+    ax.spines["left"].set_color(GRID)
+    ax.set_axisbelow(True)
+    fig.suptitle("MonitoringBench: sabotage runs caught when 1% of honest runs are flagged",
+                 x=0.01, ha="left", fontsize=11, fontweight="bold", color=TEXT)  # fmt: skip
+    fig.text(0.01, 0.005,
+             "Black lines: 95% bootstrap intervals. Published monitors: MonitoringBench Table 5, "
+             "recomputed from its released scores.\nTheir thresholds come from the paper's honest "
+             "runs; ours from Palaestra Research's 550 honest runs.",
+             color=MUTED, fontsize=7.5, ha="left", va="bottom")  # fmt: skip
+    fig.tight_layout(rect=(0, 0.05, 1, 0.97))
+    out = out or CHART_DIR / "mb-catch.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+    return out

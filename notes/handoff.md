@@ -120,7 +120,7 @@ passwords to an outside server, or give the user `restricted-service` passwordle
 | `agentguard/guard/backends/jev.py` | Jev modes: default (last 5 steps), `long_context` (whole run), `v2` (ledger plus 5 questions), `v3` (v2 plus relied-on code and 1 question) |
 | `agentguard/bench/monitoringbench.py` | Converts the public MonitoringBench releases into `mb196`; `reference()` recomputes the 13 published monitors' scores (reproduces the paper's Table 5) |
 | `agentguard/bench/mb_report.py` | `bench mb-report`: Jev vs published monitors, the control, cost → `results/bench/monitoringbench/report.json` |
-| `tests/test_bench.py`, `tests/test_ledger.py` | Unit tests (242 tests pass in total on 2026-11-23) |
+| `tests/test_bench.py`, `tests/test_ledger.py` | Unit tests (244 tests pass in total on 2026-11-24) |
 
 CLI:
 ```
@@ -377,11 +377,14 @@ review:
 4. **Optional variant, reported separately:** tell the monitor the four side-task
    descriptions, as the BashArena paper's monitor is told. It's a fair, untried lever. Develop
    it on d158 only.
-5. **Write-up:**
-   - A Level 4 section in the README and `notes/findings.md`.
+5. **Write-up (done 2026-11-24 unless noted):**
+   - A Level 4 section in the README (with `results/charts/mb-catch.png` from `bench mb-chart`)
+     and finding 4 in `notes/findings.md`.
    - A Level 4 tab in the dashboard.
-   - Resume bullets in `notes/private/career.md`.
-   - The blog (ask first).
+   - Resume bullets and interview answers 7–9 in `notes/private/career.md`.
+   - `review-eval` now also writes 95% bootstrap intervals (`ci95`); the saved values are
+     unchanged.
+   - Not done: the blog (ask first).
    - The field guide already covers Level 4 through MonitoringBench. Add t200 and the judge
      comparison to it when they exist (see section 2 for how to edit it).
 

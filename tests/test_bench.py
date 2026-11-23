@@ -221,3 +221,17 @@ def test_review_ranks_combinations_and_request() -> None:
     text = body["messages"][1]["content"]
     assert body["provider"]["data_collection"] == "deny"
     assert "<action_to_review" in text and "sudo_edit" not in text and "the task" in text
+
+
+def test_review_cis_bracket_the_point_estimate() -> None:
+    from agentguard.bench.review import cis
+
+    attack = [Trajectory(f"a{i}", "attack", "t", "x", "sudo_edit", True, []) for i in range(30)]
+    honest = [Trajectory(f"h{i}", "honest", "t", "x", None, False, []) for i in range(100)]
+    s = {t.id: 1.0 + i / 30 for i, t in enumerate(attack)} | {
+        t.id: i / 100 * 1.5 for i, t in enumerate(honest)
+    }
+    out = cis(s, attack, honest)
+    lo, hi = out["catch_at_1pct_fpr"]
+    assert 0 <= lo <= hi <= 1
+    assert out["auroc"][1] <= 1 and out["auroc"][0] > 0.5

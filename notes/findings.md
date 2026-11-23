@@ -1,8 +1,10 @@
-# The three findings that surprised me most
+# The four findings that surprised me most
 
 These are the Phase 4 findings the blog post is built on. Numbers come from
 `results/eval/test.json` (Level 1), `results/eval/attacks.json` (Level 2) and
-`results/e2e/summary.json` (Level 3). Brackets are 95% intervals.
+`results/e2e/summary.json` (Level 3), and for Level 4 from
+`results/bench/monitoringbench/report.json` and `review-eval-mb196.json`. Brackets are 95%
+intervals.
 
 ## 1. Good offline scores do not make a usable guard
 
@@ -49,6 +51,36 @@ times. The single-action benchmark echoes this: in Level 2, splitting a command 
 three steps made Jev miss 18% [0, 36] of attacks it had caught, and rules miss 50% or more
 of encoded, indirect or split versions.
 
+## 4. Against a careful attacker, a per-step guard needs memory of the whole run
+
+On BashArena, where Claude Opus 4.6 quietly sabotages Linux admin work, every guard that
+worked on my own data scored below chance (Jev: AUROC 0.23). Attacks were spread over many
+steps, honest sysadmin work trips questions like "does this weaken a security control?",
+and honest runs were twice as long, which on its own gave AUROC 0.82–0.84.
+
+Three changes, all developed on Redwood's public runs, fixed most of it:
+- **A security ledger** of the whole run, shown to Jev next to each action.
+- **A small learned run score** that discounts the questions honest work trips.
+- **Reading the misses.** They showed that attacks assemble the harm from helper files the
+  agent wrote itself, which became two ledger facts.
+
+The recipe was then frozen by a rule written in advance and scored once on MonitoringBench,
+with its 196 standard attacks and 550 honest runs from Palaestra Research. It caught 45.4%
+[37.2, 57.1] at 1% FPR, with AUROC 0.92. That is below GPT-5 (60.2%), far above GPT-4.1
+(10.2%), and ahead of GPT-5 on malware and password leaks, for $0.13 per 1,000 actions. A
+random-answer control gets 19.9%.
+
+The weak spot was firewall and sudo changes (15–17%), which honest tasks also make. A
+follow-up added a Claude Haiku second look on each run's two most suspicious steps. Its
+combination rule and pass mark were fixed on Redwood's runs first. It raised the catch to
+63.3% [56.1, 72.4] (firewall 53%, sudo 32%), level with GPT-5 and o3, for $4.12 across all
+746 runs.
+
+Caveats:
+- Different honest runs set our thresholds and the published ones.
+- The published monitors read whole runs without tool outputs.
+- The second look picks its steps after the run ends.
+
 ## Future work (paper 14)
 
 - **Watch the reasoning, not just the actions.** Baker et al. (2025) find that a monitor
@@ -64,6 +96,9 @@ of encoded, indirect or split versions.
   people approve a disguised step after many escalations would turn "reviews per 100
   tasks" into a safety number.
 - **Paraphrase attacks**, the fifth Level 2 family, written by hand.
+- **A live second look and sudo.** Send any step over a Jev threshold to the reviewer as it
+  happens, and measure the cost. Sudo attacks are still caught only 32% of the time.
+- **The untouched BashArena test set (t200)** and a like-for-like LLM-judge comparison on it.
 - **Calibration across agents:** thresholds were tuned on dataset rows; the Level 3
   escalation rates differ by agent (Haiku 20 per 100 tasks under the cheap judge, DeepSeek
   60), so per-agent tuning may pay off.

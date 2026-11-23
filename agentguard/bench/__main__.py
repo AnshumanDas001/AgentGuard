@@ -47,6 +47,7 @@ def main(argv: list[str] | None = None) -> int:
     rve_p = sub.add_parser("review-eval", help="catch rates with the second look (no calls)")
     rve_p.add_argument("--sample", default="d158", choices=list(SAMPLES))
     sub.add_parser("mb-report", help="MonitoringBench result vs published monitors (bench group)")
+    sub.add_parser("mb-chart", help="the MonitoringBench chart for the README (report group)")
     mb_p = sub.add_parser(
         "mb-convert", help="convert downloaded MonitoringBench logs (bench group)"
     )
@@ -68,6 +69,11 @@ def main(argv: list[str] | None = None) -> int:
         from agentguard.bench.review import evaluate
 
         print(json.dumps(evaluate(args.sample), indent=2))
+        return 0
+    if args.command == "mb-chart":
+        from agentguard.bench.mb_report import chart
+
+        print(f"wrote {chart()}")
         return 0
     if args.command == "mb-report":
         import json
