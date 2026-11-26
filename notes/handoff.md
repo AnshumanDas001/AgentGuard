@@ -394,7 +394,9 @@ review:
      earlier prose draft, restored at the user's request; it can't be posted as is. LessWrong's 2026 LLM
      policy is close to zero-LLM for first posts, so the user writes the text themselves; Claude
      may only lightly edit, check facts, and make charts. Never write post prose for it, and
-     never post it.
+     never post it. `notes/lesswrong-post.md` (2026-11-26) is the user's own draft with
+     Claude's tables, formulas and [REWRITE]/[FIX]/[FILL]/[ADD?] notes; several sections the
+     user pasted are still word-for-word Claude text and are marked [REWRITE].
    - The field guide already covers Level 4 through MonitoringBench. Add t200 and the judge
      comparison to it when they exist (see section 2 for how to edit it).
 
