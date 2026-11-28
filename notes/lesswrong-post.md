@@ -204,12 +204,23 @@ even further, but might also change the results.
 The development was done on fixed samples of Redwood's public BashArena runs. MonitoringBench was
 run only once for each version, and never used to tune or fit the monitor.
 
+Before the actual run, there were three ways to combine Jev and Haiku. The best was decided on the
+basis of the BashArena runs, and only if it beat the Jev-alone monitor's score there by at least 5
+points would it go to the MonitoringBench evaluation (the rule was committed to GitHub beforehand:
+[`0ebae84`](https://github.com/AnshumanDas001/AgentGuard/commit/0ebae84)). The winner of the three
+is the one whose numbers are being reported (63%), even though, on the same MonitoringBench run,
+the two we didn't pick scored higher (68% and 69%).
+
 ## Caveats
 
 - The paper uses a different set of 416 honest runs, which is not publicly released, to calibrate
   its threshold for a 1% false positive rate. We use Palaestra's 550 honest runs instead, and
   Palaestra replaced 12 runs that a frontier model found suspicious, which makes the line a bit
   easier.
+- We didn't compare against MonitoringBench's step-wise monitors because their FPR rule is a bit
+  different. They calibrate at 1% FPR over all honest steps, while we do it more strictly, at 1%
+  of entire runs. Their step-wise catch rates come with many more false alarms, so a direct
+  comparison would be unfair to our monitor.
 - The monitor was tested only on standard attacks. Refined attacks weren't tested yet due to cost
   constraints.
 
