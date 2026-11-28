@@ -129,14 +129,14 @@ The 13 questions, ordered by weight size (exact wording from
 
 Each number becomes "how far above or below a typical run is this?":
 
-$$z_i = \frac{x_i - \mu_i}{\sigma_i}$$
+**zᵢ = (xᵢ − μᵢ) ÷ σᵢ**
 
 where xᵢ is the run's value for input i, μᵢ is that input's typical value (mean) and σᵢ its
 typical spread (standard deviation), both over the 158 training runs.
 
 **3. Multiply each by its weight and add up.**
 
-$$s = \sum_{i=1}^{15} w_i \, z_i$$
+**s = w₁z₁ + w₂z₂ + … + w₁₅z₁₅**
 
 | Evidence | Weight wᵢ |
 | --- | --- |
