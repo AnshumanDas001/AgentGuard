@@ -314,5 +314,68 @@ def cost() -> Path:
     return _save(fig, "mb-cost.png")
 
 
+def preview() -> Path:
+    """post-preview.png: a 1200x630 social preview card with the headline numbers."""
+    style()
+    fig = plt.figure(figsize=(7.5, 3.9375))
+    fig.text(
+        0.05,
+        0.86,
+        "Can We Make Agent Safety Cheap with Jev?",
+        fontsize=17,
+        fontweight="bold",
+        color=TEXT,
+        va="center",
+    )
+    fig.text(
+        0.05,
+        0.765,
+        "A two-stage pre-execution monitor on MonitoringBench (196 attacks, 1% false-alarm rate)",
+        fontsize=9,
+        color=TEXT_2,
+        va="center",
+    )
+    tiles = [
+        ("45%", "caught by Jev alone", BLUE),
+        ("63%", "caught by Jev + Haiku,\nlevel with GPT-5 and o3", BLUE),
+        ("$4.12", "total for 746 runs,\nevery action checked", TEXT),
+    ]
+    for i, (big, small, color) in enumerate(tiles):
+        x = 0.05 + i * 0.31
+        fig.add_artist(
+            FancyBboxPatch(
+                (x, 0.12),
+                0.28,
+                0.52,
+                transform=fig.transFigure,
+                boxstyle="round,pad=0,rounding_size=0.02",
+                facecolor="#ffffff",
+                edgecolor=GRID,
+                linewidth=1,
+            )
+        )
+        fig.text(x + 0.025, 0.49, big, fontsize=30, fontweight="bold", color=color, va="center")
+        fig.text(x + 0.025, 0.29, small, fontsize=9, color=TEXT_2, va="center", linespacing=1.4)
+    fig.text(
+        0.05,
+        0.05,
+        "Stage 1: TypeSafe Jev 1.14 on every action + security ledger + learned score.   "
+        "Stage 2: Claude Haiku 5.5 reviews 2 steps per run.",
+        fontsize=6.6,
+        color=MUTED,
+        va="center",
+    )
+    out = CHART_DIR / "post-preview.png"
+    fig.savefig(out, dpi=160)
+    plt.close(fig)
+    return out
+
+
 def main() -> list[Path]:
-    return [pipeline(), weights(), cost(), chart(CHART_DIR / "mb-catch-post.png", control=False)]
+    return [
+        preview(),
+        pipeline(),
+        weights(),
+        cost(),
+        chart(CHART_DIR / "mb-catch-post.png", control=False),
+    ]
