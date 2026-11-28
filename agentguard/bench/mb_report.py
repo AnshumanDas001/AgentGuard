@@ -125,7 +125,7 @@ NAMES = {
 }
 
 
-def chart(out: Path | None = None) -> Path:
+def chart(out: Path | None = None, control: bool = True) -> Path:
     """results/charts/mb-catch.png: catch at 1% FPR on the 196 attacks, ours next to the 13
     published monitors, from report.json and review-eval-mb196.json (no data download)."""
     import matplotlib
@@ -150,6 +150,8 @@ def chart(out: Path | None = None) -> Path:
         ("Random-answer control", report["control_random_answers"]["catch_at_1pct_fpr"], None,
          "control"),
     ]  # fmt: skip
+    if not control:
+        rows = [r for r in rows if r[3] != "control"]
     rows.sort(key=lambda r: r[1])
     style()
     fig, ax = plt.subplots(figsize=(7.6, 6.2))

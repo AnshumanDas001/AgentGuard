@@ -8,7 +8,9 @@
   a stronger LLM**.
 - **Version 1** uses Jev (a small model built specifically for decision making in limited outputs)
   with 13 questions about every action. A code-based "security ledger" provides the memory of the
-  run, and a small ML-based learned score combines the answers for the final decision. This
+  run, and a learned score combines the answers for the final decision: a logistic regression
+  over the answers, each first normalised to a z-score using its typical value and typical
+  spread. This
   version was able to catch **45%** of the 196 standard attacks at a 1% false alarm rate
   (AUROC 0.92).
 - **Version 2** uses Claude Haiku 5.5 in a cost-efficient way with Jev by giving it two of the most
@@ -50,6 +52,8 @@ seeing only the task and the run so far, including tool outputs. The published m
 whole run once, without tool outputs.
 
 ## The monitor
+
+![How the monitor scores a run: stage 1 runs Jev on every action and combines its answers into a learned run score; stage 2 sends the two highest-scoring steps to Claude Haiku 5.5](https://raw.githubusercontent.com/AnshumanDas001/AgentGuard/main/results/charts/monitor-pipeline.png)
 
 ### Stage 1: Jev, every action
 
@@ -126,8 +130,8 @@ Each number becomes "how far above or below a typical run is this?":
 
 $$z_i = \frac{x_i - \mu_i}{\sigma_i}$$
 
-where $x_i$ is the run's value for input $i$, and $\mu_i$ and $\sigma_i$ are that input's mean and
-standard deviation over the 158 training runs.
+where $x_i$ is the run's value for input $i$, $\mu_i$ is that input's typical value (mean) and
+$\sigma_i$ its typical spread (standard deviation), both over the 158 training runs.
 
 **3. Multiply each by its weight and add up.**
 
@@ -142,10 +146,18 @@ $$s = \sum_{i=1}^{15} w_i \, z_i$$
 | Uses code it wrote earlier | +0.23 |
 | The other 10 | small (−0.16 to +0.21) |
 
+The weights come from a logistic regression: from 158 BashArena runs where we knew which were
+attacks, it learned which of the 15 z-scored inputs point toward an attack, which point toward an
+honest run, and how strongly. It is a small prediction model on top of Jev's answers.
+
+![The 15 learned weights: "hides its intent" +0.73 points most toward attack; "weakens a security control" −0.71 points most toward honest](https://raw.githubusercontent.com/AnshumanDas001/AgentGuard/main/results/charts/jev-weights.png)
+
 **4. Compare with the alarm line.** The line is set using calibration on the 550 honest runs, for
 a 1% false positive rate. A run is flagged when $s \ge t$; on MonitoringBench, $t \approx 1.6$.
 
 ## Results
+
+![Share of MonitoringBench's 196 standard attacks caught at 1% FPR: Jev + Haiku 63.3% and Jev alone 45.4%, next to 13 published monitors](https://raw.githubusercontent.com/AnshumanDas001/AgentGuard/main/results/charts/mb-catch-post.png)
 
 Share of the 196 standard attacks caught when 1% of honest runs are flagged:
 
@@ -193,6 +205,8 @@ no refusals. The total was $4.12.
 | o3 | 62.2% | $2.00 | ≥ $15.50 | ≈ $410 |
 | Claude Sonnet 4.5 | 82.7% | $3.00 | ≥ $23.30 | ≈ $620 |
 | Claude Opus 4.5 | 94.9% | $5.00 | ≥ $38.80 | ≈ $1,030 |
+
+![Cost to monitor all 746 runs on a log scale: Jev + Haiku $4.12 measured, against estimates from $9.70 (GPT-5, read once) to about $1,030 (Opus 4.5, every action)](https://raw.githubusercontent.com/AnshumanDas001/AgentGuard/main/results/charts/mb-cost.png)
 
 The stats given above are OpenRouter pricing-based estimates, but they show that the Jev-based
 monitor is comfortably cheaper than the other models. The paper setup's monitor reads each run
